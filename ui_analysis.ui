@@ -1,0 +1,1073 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1280</width>
+    <height>893</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1280</width>
+    <height>893</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="minimumSize">
+    <size>
+     <width>1280</width>
+     <height>720</height>
+    </size>
+   </property>
+   <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <layout class="QGridLayout" name="centralLayout" rowstretch="3,1" columnstretch="1,2">
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <item row="0" column="1">
+       <widget class="QWidget" name="g2dWidget" native="true">
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <layout class="QVBoxLayout" name="g2dLayout" stretch="2,1">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QWidget" name="spWidget" native="true">
+             <layout class="QGridLayout" name="gridLayout">
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <item row="0" column="0">
+               <layout class="QGridLayout" name="spLayout">
+                <property name="sizeConstraint">
+                 <enum>QLayout::SetMinimumSize</enum>
+                </property>
+                <property name="spacing">
+                 <number>0</number>
+                </property>
+                <item row="0" column="1">
+                 <widget class="QWidget" name="aoWidget" native="true">
+                  <property name="font">
+                   <font>
+                    <family>Arial</family>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_2">
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <item row="0" column="0">
+                    <layout class="QGridLayout" name="aoLayout">
+                     <property name="leftMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QWidget" name="asWidget" native="true">
+                  <property name="font">
+                   <font>
+                    <family>Arial</family>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_3">
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <item row="0" column="0">
+                    <layout class="QGridLayout" name="asLayout">
+                     <property name="leftMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QWidget" name="doWidget" native="true">
+                  <property name="font">
+                   <font>
+                    <family>Arial</family>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_4" rowstretch="0">
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <item row="0" column="0">
+                    <layout class="QGridLayout" name="doLayout">
+                     <property name="leftMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QWidget" name="dsWidget" native="true">
+                  <property name="font">
+                   <font>
+                    <family>Arial</family>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_5">
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <item row="0" column="0">
+                    <layout class="QGridLayout" name="dsLayout">
+                     <property name="leftMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QWidget" name="eoWidget" native="true">
+                  <property name="font">
+                   <font>
+                    <family>Arial</family>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_6">
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <item row="0" column="0">
+                    <layout class="QGridLayout" name="eoLayout">
+                     <property name="leftMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QWidget" name="esWidget" native="true">
+                  <property name="font">
+                   <font>
+                    <family>Arial</family>
+                    <pointsize>10</pointsize>
+                   </font>
+                  </property>
+                  <layout class="QGridLayout" name="gridLayout_7">
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <item row="0" column="0">
+                    <layout class="QGridLayout" name="esLayout">
+                     <property name="leftMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QWidget" name="tiWidget" native="true">
+             <layout class="QHBoxLayout" name="horizontalLayout_3">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <item>
+               <layout class="QHBoxLayout" name="tiLayout">
+                <property name="spacing">
+                 <number>0</number>
+                </property>
+                <item>
+                 <widget class="QWidget" name="dtiWidget" native="true">
+                  <layout class="QHBoxLayout" name="horizontalLayout_5">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <layout class="QHBoxLayout" name="dtiLayout">
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>1</number>
+                     </property>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QWidget" name="atiWidget" native="true">
+                  <layout class="QHBoxLayout" name="horizontalLayout_6">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <layout class="QHBoxLayout" name="atiLayout">
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>1</number>
+                     </property>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QWidget" name="etiWidget" native="true">
+                  <layout class="QHBoxLayout" name="horizontalLayout_4">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <layout class="QHBoxLayout" name="etiLayout">
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>1</number>
+                     </property>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QWidget" name="g3dWidget" native="true">
+        <layout class="QVBoxLayout" name="verticalLayout_2">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <layout class="QVBoxLayout" name="g3dLayout">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="1" column="0" colspan="2">
+       <widget class="QWidget" name="bottomWidget" native="true">
+        <layout class="QVBoxLayout" name="verticalLayout_3">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <layout class="QHBoxLayout" name="bottomLayout" stretch="1,2">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QWidget" name="infoWidget" native="true">
+             <layout class="QHBoxLayout" name="horizontalLayout_7">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <item>
+               <layout class="QGridLayout" name="infoLayout" rowstretch="1,4,1,4,1,4,1,4" columnstretch="1,0,1,0">
+                <property name="spacing">
+                 <number>0</number>
+                </property>
+                <item row="4" column="2">
+                 <widget class="QLabel" name="b2aLabel">
+                  <property name="text">
+                   <string>Azimuth angle</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="2">
+                 <widget class="QLabel" name="b2eLabel">
+                  <property name="text">
+                   <string>Poloar angle</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QLineEdit" name="baLine">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="0">
+                 <widget class="QLineEdit" name="b1eLine">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QLabel" name="baLabel">
+                  <property name="text">
+                   <string>Bond angle</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="0">
+                 <widget class="QLabel" name="b1eLabel">
+                  <property name="text">
+                   <string>Polar angle</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QLabel" name="b2rLabel">
+                  <property name="text">
+                   <string>Bond distance</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLineEdit" name="amountLine">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLineEdit" name="b1rLine">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="2">
+                 <widget class="QLineEdit" name="b2aLine">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="2">
+                 <widget class="QLineEdit" name="b2rLine">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="2">
+                 <widget class="QLineEdit" name="b2eLine">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="b1rLabel">
+                  <property name="text">
+                   <string>Bond distance</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLineEdit" name="b1aLine">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QLabel" name="b1aLabel">
+                  <property name="text">
+                   <string>Azimuth angle</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QLabel" name="amountLabel">
+                  <property name="text">
+                   <string>Replica (displayed/total)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <spacer name="infoSpacer">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="1" column="3">
+                 <spacer name="infoSpacer_2">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QWidget" name="chiWidget" native="true">
+             <layout class="QHBoxLayout" name="horizontalLayout_8">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <item>
+               <layout class="QHBoxLayout" name="chiLayout" stretch="1,1,1">
+                <property name="spacing">
+                 <number>0</number>
+                </property>
+                <item>
+                 <widget class="QWidget" name="chixWidget" native="true">
+                  <property name="minimumSize">
+                   <size>
+                    <width>283</width>
+                    <height>207</height>
+                   </size>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout" stretch="0">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <layout class="QHBoxLayout" name="chixLayout">
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>1</number>
+                     </property>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QWidget" name="chiy" native="true">
+                  <layout class="QHBoxLayout" name="horizontalLayout_10">
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <layout class="QHBoxLayout" name="chiyLayout">
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>1</number>
+                     </property>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QWidget" name="chizWidget" native="true">
+                  <property name="minimumSize">
+                   <size>
+                    <width>283</width>
+                    <height>207</height>
+                   </size>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_9">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <layout class="QHBoxLayout" name="chizLayout">
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>1</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>1</number>
+                     </property>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1280</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="fileMenu">
+    <property name="title">
+     <string>file</string>
+    </property>
+    <addaction name="expAction"/>
+    <addaction name="readAction"/>
+    <addaction name="saveAction"/>
+   </widget>
+   <widget class="QMenu" name="rangeMenu">
+    <property name="title">
+     <string>range</string>
+    </property>
+    <addaction name="d_oAction"/>
+    <addaction name="a_oAction"/>
+    <addaction name="e_oAction"/>
+    <addaction name="d_sAction"/>
+    <addaction name="a_sAction"/>
+    <addaction name="e_sAction"/>
+    <addaction name="b_aAction"/>
+   </widget>
+   <widget class="QMenu" name="optionMenu">
+    <property name="title">
+     <string>option</string>
+    </property>
+    <addaction name="neighborAction"/>
+    <addaction name="regionAction"/>
+   </widget>
+   <addaction name="fileMenu"/>
+   <addaction name="rangeMenu"/>
+   <addaction name="optionMenu"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="readAction">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>read...</string>
+   </property>
+  </action>
+  <action name="saveAction">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>save...</string>
+   </property>
+  </action>
+  <action name="d_oAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>distance1</string>
+   </property>
+  </action>
+  <action name="a_oAction">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>azimuth1</string>
+   </property>
+  </action>
+  <action name="e_oAction">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>elevation1</string>
+   </property>
+  </action>
+  <action name="d_sAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>distance2</string>
+   </property>
+  </action>
+  <action name="a_sAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>azimuth2</string>
+   </property>
+  </action>
+  <action name="e_sAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>elevation2</string>
+   </property>
+  </action>
+  <action name="heightAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>height</string>
+   </property>
+  </action>
+  <action name="neighborAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>nearest neighbor</string>
+   </property>
+  </action>
+  <action name="regionAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>selection bar</string>
+   </property>
+  </action>
+  <action name="expAction">
+   <property name="text">
+    <string>exp data...</string>
+   </property>
+  </action>
+  <action name="b_aAction">
+   <property name="text">
+    <string>bond_angle</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
