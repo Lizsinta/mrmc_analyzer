@@ -935,7 +935,6 @@
     <property name="title">
      <string>file</string>
     </property>
-    <addaction name="expAction"/>
     <addaction name="readAction"/>
     <addaction name="saveAction"/>
    </widget>
@@ -949,7 +948,9 @@
     <addaction name="d_sAction"/>
     <addaction name="a_sAction"/>
     <addaction name="e_sAction"/>
-    <addaction name="b_aAction"/>
+    <addaction name="d_tiAction"/>
+    <addaction name="a_tiAction"/>
+    <addaction name="e_tiAction"/>
    </widget>
    <widget class="QMenu" name="optionMenu">
     <property name="title">
@@ -1062,9 +1063,19 @@
     <string>exp data...</string>
    </property>
   </action>
-  <action name="b_aAction">
+  <action name="d_tiAction">
    <property name="text">
-    <string>bond_angle</string>
+    <string>distance3</string>
+   </property>
+  </action>
+  <action name="a_tiAction">
+   <property name="text">
+    <string>azimuth3</string>
+   </property>
+  </action>
+  <action name="e_tiAction">
+   <property name="text">
+    <string>elevation3</string>
    </property>
   </action>
  </widget>

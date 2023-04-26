@@ -3,10 +3,9 @@ from mrmc_package.analysis import *
 from mrmc_package.ui_analysis import Ui_MainWindow
 import pyqtgraph.opengl as gl
 import pyqtgraph as pg
-from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtGui import QIcon, QFont, QCursor
 from pyqtgraph.Qt import QtCore
-from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMenu
-from PyQt5.Qt import QCursor
+from PyQt5.QtWidgets import QMainWindow, QApplication, QFileDialog, QMenu, QMessageBox
 from PyQt5.QtCore import Qt
 import numpy as np
 import os
@@ -70,7 +69,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.Ati = pg.PlotWidget(background=(255, 255, 255, 255))
         self.eti = pg.PlotWidget(background=(255, 255, 255, 255))
 
-
         self.widget_dict = {0: self.do, 1: self.Ao, 2: self.eo,
                             3: self.ds, 4: self.As, 5: self.es,
                             6: self.dti, 7: self.Ati, 8: self.eti}
@@ -78,11 +76,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                             3: self.dsLayout, 4: self.asLayout, 5: self.esLayout,
                             6: self.dtiLayout, 7: self.atiLayout, 8: self.etiLayout}
         self.action_dict = {0: self.d_oAction, 1: self.a_oAction, 2: self.e_oAction,
-                            3: self.d_sAction, 4: self.a_sAction, 5: self.e_sAction, 6: self.b_aAction}
+                            3: self.d_sAction, 4: self.a_sAction, 5: self.e_sAction,
+                            6: self.d_tiAction, 7: self.a_tiAction, 8: self.e_tiAction}
         self.actioname_dict = {'d_oAction': 0, 'a_oAction': 1, 'e_oAction': 2,
-                               'd_sAction': 3, 'a_sAction': 4, 'e_sAction': 5, 'b_aAction': 6}
+                               'd_sAction': 3, 'a_sAction': 4, 'e_sAction': 5,
+                               'd_tiAction': 6, 'a_tiAction': 7, 'e_tiction': 8}
         self.info_dict = {0: self.b1rLine, 1: self.b1aLine, 2: self.b1eLine,
-                          3: self.b2rLine, 4: self.b2aLine, 5: self.b2eLine, 6: self.baLine}
+                          3: self.b2rLine, 4: self.b2aLine, 5: self.b2eLine}
         self.rdf_name = ['r-O', 'φ-O', 'θ-O', 'r-S', 'φ-S', 'θ-S', 'r-Ti', 'φ-Ti', 'θ-Ti']
 
         for i in range(9):
@@ -113,10 +113,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.regionAction.triggered.connect(self.region_switch)
         self.hmin, self.hmax = 0, 0
 
-        for i in range(7):
+        for i in range(9):
             self.action_dict[i].triggered.connect(self.select)
         self.heightAction.triggered.connect(self.select)
-        self.expAction.triggered.connect(self.load_exp)
         self.readAction.triggered.connect(self.read)
         self.saveAction.triggered.connect(self.save)
         self.folder = ''
@@ -126,21 +125,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.substrate = True
         self.material = ''
 
-        self.exp_name = np.array([os.getcwd() + r'\source\Cu202_sum.rex',
+        '''self.exp_name = np.array([os.getcwd() + r'\source\Cu202_sum.rex',
                                   os.getcwd() + r'\source\Cu207_sum.rex',
-                                  os.getcwd() + r'\source\Cu211_sum_d.rex'])
+                                  os.getcwd() + r'\source\Cu211_sum_d.rex'])'''
 
         self.exp = np.array([], dtype=EXP)
 
-    def load_exp(self):
-        file_list, _ = QFileDialog.getOpenFileNames(self, 'select experimental data...', r'C:/Monte Carlo/',
-                                              'REX Files(*.rex *.ex3)')
-        if len(file_list) == 0:
-            return
-        if len(file_list) > 3:
-            self.statusbar.showMessage('too many files', 3000)
-            return
-        self.statusbar.showMessage('experimental data loaded', 3000)
+    def load_exp(self, file_list):
         self.exp_name = np.asarray(file_list)
         if self.exp_name.size == 1:
             self.plotx.setTitle('χ(k)', color='#000000', size='20pt')
@@ -154,7 +145,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.plotx.setTitle('χ(k) [001]', color='#000000', size='20pt')
             self.ploty.setTitle('χ(k) [1-10]', color='#000000', size='20pt')
             self.plotz.setTitle('χ(k) [110]', color='#000000', size='20pt')
-        print(self.exp_name)
 
     def read(self):
         address = self.folder.split(self.folder.split('/')[-1])[0] if not self.folder == '' \
@@ -169,72 +159,88 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.plotx.clear()
             self.ploty.clear()
             self.plotz.clear()
-            for i in range(7):
+            for i in range(9):
                 self.widget_dict[i].clear()
         self.folder = folder
         with open(self.folder + r'\info.txt', 'r') as f:
-            self.material = f.readline().split()[1]
-        coordinate_cu, distance_cu, self.element_cu, flag = read_rep_substrate(self.folder, self.material, filter=False)
-        if not flag:
+            self.local_e = np.array([f.readline().split()[1]])
+            self.local_e = np.append(self.local_e, f.readline().split()[1:])
+            self.local_size = self.local_e.size
+            self.surface = f.readline().split()[1]
+            dE = [float(_) for _ in f.readline().split()[1:]]
+            k = [float(_) for _ in f.readline().split()[1:]]
+            r = [float(_) for _ in f.readline().split()[1:]]
+            print(k, r)
+        self.local_c, flag = read_rep(self.folder, self.choice_window(), self.local_size)
+        if flag:
             self.statusbar.showMessage('No result file found', 3000)
             self.folder = ''
             return
-        self.substrate = True if coordinate_cu[0].shape[0] > 3 else False
-        absorb = 1 if self.material == 'CuAlO' else 2
-        self.coordinate_substrate = coordinate_cu[0][:-absorb].copy() if self.substrate else self.load_substrate()
+        self.surface_c, self.surface_e = load_substrate(self.folder, self.local_size)
 
+        if self.surface == 'Al2O3':
+            plot_Al2O3(self.surface_c, self.surface_e, self.subs)
+        elif self.surface == 'TiO2':
+            plot_TiO2(self.surface_c, self.surface_e, self.subs, local=False)
 
-        if self.material == 'CuAlO':
-            plot_Al2O3(self.coordinate_substrate, self.element_cu, self.subs)
-        else:
-            plot_TiO2(self.coordinate_substrate, self.element_cu, self.subs, local=False)
-        '''self.subs.addItem(line([self.coordinate_substrate[45][0]-5, self.coordinate_substrate[45][0]+5], [self.coordinate_substrate[45][1], self.coordinate_substrate[45][1]], [self.coordinate_substrate[45][2], self.coordinate_substrate[45][2]], c='red', width=3))
-        self.subs.addItem(line([self.coordinate_substrate[45][0], self.coordinate_substrate[45][0]], [self.coordinate_substrate[45][1]-5, self.coordinate_substrate[45][1]+5], [self.coordinate_substrate[45][2], self.coordinate_substrate[45][2]], c='green', width=3))
-        self.subs.addItem(line([self.coordinate_substrate[45][0], self.coordinate_substrate[45][0]], [self.coordinate_substrate[45][1], self.coordinate_substrate[45][1]], [self.coordinate_substrate[45][2]-5, self.coordinate_substrate[45][2]+5], c='blue', width=3))
-        self.subs.addItem(scatter(self.coordinate_substrate[45][0], self.coordinate_substrate[45][1], self.coordinate_substrate[45][2], c='purple', scale=0.6))'''
-        self.rep = len(coordinate_cu)
+        self.rep = self.local_c.shape[0]
         self.amountLine.setText('%d / %d' % (self.rep, len(os.listdir(self.folder + r'/result'))))
-        if self.substrate:
-            self.coordinate_np = np.array([coordinate_cu[0][-absorb:].copy()])
-            for i in range(1, self.rep):
-                self.coordinate_np = np.vstack((self.coordinate_np, np.array([coordinate_cu[i]])))
+
+        with open(self.folder + r'/mrmc.inp', 'r') as f:
+            f.readline()
+            exp_path = np.array([])
+            for i in range(3):
+                temp = f.readline()
+                if not temp or temp.find('exp') == -1:
+                    self.sig_warning.emit('exp formal error')
+                    return False
+                temp = temp.split(temp.split(':')[0] + ':')[1].strip()
+                if not temp or len(temp.split()) == 0:
+                    break
+                exp_path = np.append(exp_path, temp.split('\n')[0])
+            self.load_exp(exp_path)
+            while True:
+                lines = f.readline()
+                if not lines.find('weight') == -1:
+                    break
+            weight = int(lines.split(':')[1])
+            while True:
+                lines = f.readline()
+                if not lines.find('S0') == -1:
+                    break
+            s0 = float(lines.split(':')[1])
+            sig2 = float(f.readline().split(':')[1])
+            for i in range(3):
+                f.readline()
+            rpath = float(f.readline().split(':')[1])
+            temp = f.readline().split(':')[1].strip()
+            if temp == 'True' or temp == 'true' or temp == '1':
+                ms = True
+            elif temp == 'False' or temp == 'false' or temp == '0':
+                ms = False
+            while True:
+                lines = f.readline()
+                if not lines.find('material_folder') == -1:
+                    break
+            f_material = lines.split(lines.split(':')[0] + ':')[1].split('\n')[0].strip()
+        if not self.surface == '':
+            self.select_c, self.select_d, self.select_e = select_atom(self.surface_c, self.surface_e,
+                                                                      self.local_c, self.local_e, rpath)
+        print(self.local_c.shape)
+
+        if self.surface == 'Al2O3':
+            self.symbol = np.append(self.local_e[1:], ['O', 'Al'])
+        elif self.surface == 'TiO2':
+            self.symbol = np.append(self.local_e[1:], ['O', 'Ti'])
         else:
-            self.coordinate_np = np.asarray(coordinate_cu)
-            for i in range(self.rep):
-                self.coordinate_np[i] = self.coordinate_np[i] - self.coordinate_np[i][2] + self.coordinate_substrate[45]
-            self.coordinate_np = self.coordinate_np[:, :2, :]
-
-        self.coordinate_select, self.distance_select, self.element_select = select_atom(self.coordinate_substrate,
-                                                                   self.coordinate_np, self.element_cu, nearest=True)
-        print(self.coordinate_np.shape)
-
-
-
-        surface_symbol = np.array(['O', 'Ti'])
-        dist = np.array([])
-        for rep in range(self.rep):
-            distance = np.array([np.sqrt(((_ - self.coordinate_np[rep][0]) ** 2).sum()) for _ in self.coordinate_substrate])
-            temp_c = self.coordinate_np[rep].copy()
-            temp_e = self.element_cu[-2:].copy()
-            for j in range(surface_symbol.size):
-                for i in range(self.element_cu.size - 2):
-                    if self.element_cu[i] == surface_symbol[j] and distance[i] < 2.7:
-                        temp_c = np.vstack((temp_c, self.coordinate_substrate[i]))
-                        temp_e = np.append(temp_e, self.element_cu[i])
-                        if self.element_cu[i] == 'O':
-                            dist = np.append(dist, sqrt(((self.coordinate_substrate[i] - temp_c[0]) ** 2).sum()))
-            if rep == 0:
-                self.coor_cal = [temp_c - temp_c[0]]
-                self.element_cal = [temp_e]
-            else:
-                self.coor_cal.append(temp_c - temp_c[0])
-                self.element_cal.append(temp_e)
-
+            self.symbol = self.local_e[1:].copy()
+        self.symbol = np.unique(self.symbol)
         if not self.material == 'CuAlO':
-            self.rdf = rdf_polarization(self.coordinate_select, self.distance_select, self.element_select)
-            urdf = [np.unique(self.rdf[_], return_counts=True) for _ in range(9)]
-            self.bar_spher = [bar(urdf[_][0], urdf[_][1], width=0.5) for _ in range(9)]
-            for i in range(9):
+            graph_size = self.symbol.size if self.symbol.size <= 3 else 3
+            self.rdf, self.rdf_label = rdf_polarization(self.select_c, self.select_d, self.select_e, self.symbol)
+            urdf = [np.unique(self.rdf[_], return_counts=True) for _ in range(graph_size * 3)]
+            self.bar_spher = [bar(urdf[_][0], urdf[_][1], width=0.5) for _ in range(graph_size * 3)]
+            for i in range(graph_size * 3):
                 if i < 6:
                     self.info_dict[i].setText('%.2f-%.2f' % (self.rdf[i].mean(), self.rdf[i].std()))
                 self.widget_dict[i].addItem(self.bar_spher[i])
@@ -245,60 +251,42 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.widget_dict[i].setXRange(np.min(urdf[i][0]) - 0.01, np.max(urdf[i][0]) + 0.01)
                 else:
                     self.widget_dict[i].setLabel('bottom', 'angle', unit='°')
+            for i in range(graph_size):
+                self.widget_dict[i * 3].setTitle('R (%s-%s)' % (self.local_e[0], self.symbol[i]),
+                                                 color='#000000', size='20pt')
+                self.widget_dict[i * 3 + 1].setTitle('φ (%s-%s)' % (self.local_e[0], self.symbol[i]),
+                                                     color='#000000', size='20pt')
+                self.widget_dict[i * 3 + 2].setTitle('θ (%s-%s)' % (self.local_e[0], self.symbol[i]),
+                                                     color='#000000', size='20pt')
             self.do.plotItem.enableAutoRange(axis='x', enable=False)
-            with open(self.folder + r'/info.txt', 'r') as info:
-                for _ in range(4):
-                    info.readline()
-                k = info.readline().split()[1:]
-                r = info.readline().split()[1:]
-                print(k, r)
-                for _ in range(5):
-                    info.readline()
-                b1name = 'Cu-O'#info.readline().split()[0]
-                b2name = 'Cu-S'#info.readline().split()[0]
-                print(b1name, b2name)
-                self.do.setTitle('R (%s)' % b1name, color='#000000', size='20pt')
-                self.Ao.setTitle('φ (%s)' % b1name, color='#000000', size='20pt')
-                self.eo.setTitle('θ (%s)' % b1name, color='#000000', size='20pt')
-                self.ds.setTitle('R (%s)' % b2name, color='#000000', size='20pt')
-                self.As.setTitle('φ (%s)' % b2name, color='#000000', size='20pt')
-                self.es.setTitle('θ (%s)' % b2name, color='#000000', size='20pt')
-                self.b1rLabel.setText('Bond distance (%s)' % b1name)
-                self.b1aLabel.setText('Azimuth angle (%s)' % b1name)
-                self.b1eLabel.setText('Polar angle (%s)' % b1name)
-                self.b2rLabel.setText('Bond distance (%s)' % b2name)
-                self.b2aLabel.setText('Azimuth angle (%s)' % b2name)
-                self.b2eLabel.setText('Polar angle (%s)' % b2name)
-                self.exp = np.array([EXP(self.exp_name[i], float(k[0]), float(k[1]), float(r[0]), float(r[1]))
-                                     for i in range(self.exp_name.size)])
+            self.exp = np.array([EXP(self.exp_name[i], k[0], k[1], r[0], r[1]) for i in range(self.exp_name.size)])
 
         table = np.zeros((3, self.rep), dtype=TABLE_POL)
         for pol in range(3):
             for i in range(self.rep):
                 table[pol][i] = TABLE_POL(self.exp[pol].k_start, self.exp[pol].k_end, self.exp[pol].r_start,
-                                          self.exp[pol].r_end, 0, [13, -3, 13], 1, self.exp[pol].k0,
-                                          self.coor_cal[i].copy(), self.element_cal[i].copy(),
-                                          r'J:\Monte Carlo\cutio2', pol, ms_en=False)
+                                          self.exp[pol].r_end, sig2, dE, s0, self.exp[pol].k0,
+                                          self.select_c[i], self.select_e[i], f_material, pol, ms_en=ms, weight=weight)
         chi_sum = np.zeros((3, self.exp[0].k.size))
-        ax = np.array([plt.subplot(3, 1, _+1) for _ in range(3)])
-        direct = ['[001]', '[1-10]', '[110]']
+        #ax = np.array([plt.subplot(3, 1, _ + 1) for _ in range(3)])
+        #direct = ['[001]', '[1-10]', '[110]']
         for pol in range(3):
-            for index in range(self.rep):
-                chi_sum[pol] += table[pol][index].chi
+            for i in range(self.rep):
+                chi_sum[pol] += table[pol][i].chi
             chi_sum[pol] /= self.rep
             print(self.exp[pol].r_factor(chi_sum[pol]))
-            ax[pol].plot(self.exp[pol].r, self.exp[pol].ft, c='k', label='expe %s'%direct[pol])
-            ax[pol].plot(self.exp[pol].r, np.abs(norm_fft(chi_sum[pol], self.exp[pol].r.size)), c='r', label='average %s'%direct[pol])
+            '''ax[pol].plot(self.exp[pol].k, self.exp[pol].chi, c='k', label='expe %s'%direct[pol])
+            #ax[pol].plot(self.exp[pol].r, np.abs(norm_fft(chi_sum[pol], self.exp[pol].r.size)), c='r', label='average %s'%direct[pol])
+            ax[pol].plot(self.exp[pol].k, chi_sum[pol], c='r', label='average %s' % direct[pol])
             ax[pol].legend(loc='lower right')
-            ax[pol].set_ylabel('χ %s'%direct[pol])
-        ax[2].set_xlabel(r'$k[Å^{-1}]$')
-        plt.show()
+            ax[pol].set_ylabel('χ %s'%direct[pol])'''
+        #ax[2].set_xlabel(r'$k[Å^{-1}]$')
+        #plt.show()
 
-        self.item_r = plot_rotate(self.coordinate_substrate, self.coordinate_np, self.element_cu, self.material,
-                                  self.rota, nearest=True, color_assign='' if self.substrate else 'purple')
+        self.item_r = plot_rotate(self.surface_c, self.surface_e, self.local_c, self.local_e, rpath, self.surface,
+                                  self.rota)
 
-        self.item_s, self.item_c = plot_on_substrate(self.coordinate_np, self.coordinate_substrate, self.element_cu,
-                                                     self.material, self.subs)
+        self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, self.local_c, rpath, self.subs)
 
         self.line_exp = np.array([line(x=self.exp[_].k, y=self.exp[_].chi, c='black', width=3)
                                   for _ in range(self.exp.size)])
@@ -310,27 +298,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.line_chi[i][j] = line(x=self.exp[0].k, y=table[i][j].chi, c='red', alpha=0.3)
                 self.widget_plot[i].addItem(self.line_chi[i][j])
 
-        #ax = np.array([plt.subplot(1, 3, _ + 1) for _ in range(3)])
-        #direct = ['[001]', '[1-10]', '[110]']
-
         self.line_aver = np.zeros(3, dtype=pg.PlotDataItem)
         for i in range(self.exp.size):
-            chi = np.sum(self.chi[i], axis=0) / self.rep
-            #ax[i].plot(self.exp[i].k, self.exp[i].chi, c='k', label='expe %s'%direct[i])
-            #ax[i].plot(self.exp[i].k, chi, c='r', label='average %s' % direct[i])
-            #ax[i].legend(loc='lower right')
-            #ax[i].set_ylabel('χ %s'%direct[i])
             self.line_aver[i] = line(x=self.exp[i].k, y=chi_sum[i], c='blue', width=3)
             self.line_aver[i].opts['name'] = '%.3f' % self.exp[i].r_factor(chi_sum[i])
             self.widget_plot[i].addItem(self.line_aver[i])
-            rfactor = np.array([self.exp[i].r_factor(self.chi[i][_]) for _ in range(self.rep)])
-            rdf = np.unique(np.round(rfactor, 1), return_counts=True)
-            #ax[i].bar(rdf[0], rdf[1], width=0.05, align='center', color='k')
-            #ax[i].set_xlabel('R-factor')
-            #ax[i].set_title(direct[i])
-        #ax[2].set_xlabel(r'$k[Å^{-1}]$')
-        #ax[0].set_ylabel(r'frequency')
-        #plt.show()
 
         self.hmin = np.min(self.rdf[self.range_target]) - 0.01
         self.hmax = np.max(self.rdf[self.range_target]) + 0.01
@@ -373,28 +345,41 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.regionAction.setChecked(True)
 
     def update(self, manual=False):
+        graph_size = self.symbol.size if self.symbol.size <= 3 else 3
         data = self.rdf[self.range_target]
+        label = self.rdf_label[self.range_target//graph_size]
         if manual:
             hmin, hmax = self.region_line.getRegion()
-            index0 = np.where((hmin < data) & (data < hmax), True, False)
-            index = np.array([True] * self.rep)
+            index0 = np.where((hmin < data) & (data < hmax), False, True)
+            select0 = np.unique(label[index0])
+            for i in select0:
+                index0[np.where(label == i)[0]] = True
+            index1 = np.array([False] * self.rdf[self.range_target].size)
+            select1 = np.arange(self.rep)
         else:
-            index0 = np.where((self.hmin < data) & (data < self.hmax), True, False)
+            index0 = np.where((self.hmin < data) & (data < self.hmax), False, True)
+            select0 = np.unique(label[index0])
+            for i in select0:
+                index0[np.where(label == i)[0]] = True
             self.hmin, self.hmax = self.region_line.getRegion()
-            index = np.where((self.hmin < data) & (data < self.hmax), True, False)
+            index1 = np.where((self.hmin < data) & (data < self.hmax), False, True)
+            select1 = np.unique(label[index1])
+            for i in select1:
+                index1[np.where(label == i)[0]] = True
+
         for i in range(self.rep):
-            if index0[i] and not index[i]:
-                self.subs.removeItem(self.item_s[i * 2])
-                self.subs.removeItem(self.item_s[i * 2 + 1])
+            if np.where(select0 == i)[0].size == 0 and np.where(select1 == i)[0].size > 0:
+                self.subs.removeItem(self.item_s[i * self.local_size])
+                self.subs.removeItem(self.item_s[i * self.local_size + 1])
                 for j in range(self.item_c[i].size):
                     self.subs.removeItem(self.item_c[i][j])
                 for j in range(self.item_r[i].size):
                     self.rota.removeItem(self.item_r[i][j])
                 for pol in range(self.exp.size):
                     self.widget_plot[pol].removeItem(self.line_chi[pol][i])
-            elif not index0[i] and index[i]:
-                self.subs.addItem(self.item_s[i * 2])
-                self.subs.addItem(self.item_s[i * 2 + 1])
+            elif np.where(select1 == i)[0].size == 0 and np.where(select0 == i)[0].size > 0:
+                self.subs.addItem(self.item_s[i * self.local_size])
+                self.subs.addItem(self.item_s[i * self.local_size + 1])
                 for j in range(self.item_c[i].size):
                     self.subs.addItem(self.item_c[i][j])
                 for j in range(self.item_r[i].size):
@@ -402,40 +387,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 for pol in range(self.exp.size):
                     self.widget_plot[pol].addItem(self.line_chi[pol][i])
 
-        self.amountLine.setText('%d / %d' % (np.where(index == True)[0].size,
-                                             len(os.listdir(self.folder + r'/result'))))
-        rdf = rdf_polarization(self.coordinate_select[index], self.distance_select[index])
-        urdf = [np.unique(rdf[_], return_counts=True) for _ in range(7)]
-        urdf[self.range_target] = np.unique(self.rdf[self.range_target], return_counts=True)
-        for i in range(7):
-            self.info_dict[i].setText('%.2f-%.2f' % (rdf[i].mean(), rdf[i].std()))
-            self.bar_spher[i].setOpts(x=urdf[i][0], height=urdf[i][1])
-        if not urdf[0][0].size == 0:
-            self.do.setXRange(np.min(urdf[0][0] - 0.01), np.max(urdf[0][0] + 0.01))
-        if not urdf[3][0].size == 0:
-            self.ds.setXRange(np.min(urdf[3][0] - 0.01), np.max(urdf[3][0] + 0.01))
-        if index.any():
-            count = np.where(index == True)[0].size
-            for i in range(self.exp.size):
-                chi = np.sum(self.chi[i][index], axis=0) / count
-                self.line_aver[i].setData(x=self.exp[0].k, y=chi)
-                self.widget_plot[i].plotItem.legend.items[0][1].setText('%.3f' % self.exp[i].r_factor(chi))
-
-    def load_substrate(self):
-        with open(os.getcwd() + r'\tio2_coor.txt', 'r') as f:
-            coordinate_substrate = np.array([])
-            ele_substrate = np.array([])
-            while True:
-                temp = f.readline()
-                if not temp or temp.isspace():
-                    break
-                temp = temp.split()
-                coordinate_substrate = np.append(coordinate_substrate,
-                                                 np.array([float(temp[0]), float(temp[1]), float(temp[2])]))
-                ele_substrate = np.append(ele_substrate, temp[4][:-1])
-            coordinate_substrate = coordinate_substrate.reshape(int(coordinate_substrate.size/3), 3)
-            self.element_cu = np.append(ele_substrate, np.array(['Cu', 'S']))
-        return coordinate_substrate
+        if (index0 == index1).all():
+            index1 = np.invert(index1)
+            select = np.unique(label[index1])
+            self.amountLine.setText('%d / %d' % (select.size, len(os.listdir(self.folder + r'/result'))))
+            rdf, label = rdf_polarization(self.select_c, self.select_d, self.select_e, self.symbol, select=select)
+            urdf = [np.unique(rdf[_], return_counts=True) for _ in range(graph_size * 3)]
+            urdf[self.range_target] = np.unique(self.rdf[self.range_target], return_counts=True)
+            for i in range(graph_size * 3):
+                if i < 6:
+                    self.info_dict[i].setText('%.2f-%.2f' % (rdf[i].mean(), rdf[i].std()))
+                self.bar_spher[i].setOpts(x=urdf[i][0], height=urdf[i][1])
+                if (i == 0 or i == 3 or i == 6) and not urdf[i][0].size == 0:
+                    self.widget_dict[i].setXRange(np.min(urdf[i][0] - 0.01), np.max(urdf[i][0] + 0.01))
+            if index1.any():
+                for i in range(self.exp.size):
+                    chi = np.sum(self.chi[i][select], axis=0) / select.size
+                    self.line_aver[i].setData(x=self.exp[0].k, y=chi)
+                    self.widget_plot[i].plotItem.legend.items[0][1].setText('%.3f' % self.exp[i].r_factor(chi))
 
     def save_3d_menu(self, pos):
         target = self.sender()
@@ -462,6 +431,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         elif not self.regionAction.isChecked() and self.region_enable:
             self.widget_dict[self.range_target].removeItem(self.region_line)
             self.region_enable = False
+
+    def choice_window(self):
+        msg = QMessageBox(self)
+        msg.setWindowTitle('resulted model')
+        msg.setText('Please select a set of model')
+        msg.setIcon(QMessageBox.Question)
+        msg.addButton('Best', QMessageBox.YesRole)
+        msg.addButton('Final', QMessageBox.NoRole)
+        msg.exec_()
+        if msg.clickedButton().text() == 'Best':
+            return 'Best'
+        else:
+            return 'final'
 
 
 

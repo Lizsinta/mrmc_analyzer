@@ -5,8 +5,8 @@ from scipy.special import comb
 
 
 class TABLE_POL:
-    def __init__(self, k_head, k_tail, r_head, r_tail, sig, dE, s02, k0, coor, element,
-                 folder, polarization=-1, ms_en=False):
+    def __init__(self, k_head, k_tail, r_head, r_tail, sig2, dE, s02, k0, coor, element,
+                 folder, polarization=-1, ms_en=False, weight=3):
         self.k0 = k0
         self.k_head = k_head
         self.k_tail = k_tail
@@ -15,12 +15,13 @@ class TABLE_POL:
         self.element = element
         self.coordinate = coor
         self.distance = np.array([sqrt((_ ** 2).sum()) for _ in coor])
-        self.sig = np.exp(2 * sig ** 2 * k0 ** 2)
+        self.sig2 = np.exp(2 * sig2 * k0 ** 2)
         self.dE = dE
         self.s02 = s02
         self.folder = folder
         self.pol = polarization
         self.ms_en = ms_en
+        self.weight = weight
 
         self.atom = np.array([])
         self.amount = self.distance.size
@@ -91,7 +92,7 @@ class TABLE_POL:
                 return
             if not type(table[index]) == FEFF:
                 try:
-                    table[index] = FEFF(file + r'\feff%d.dat' % index, self.k0, self.s02)
+                    table[index] = FEFF(file + r'\feff%d.dat' % index, self.k0, self.s02, self.weight)
                 except FileNotFoundError:
                     print(self.coordinate, self.distance, target, self.distance[target])
                     self.log_1st[target] = 0
@@ -108,7 +109,7 @@ class TABLE_POL:
                 polar = 1
             chi0 = np.multiply(np.multiply(np.multiply(
                 np.sin(2 * self.distance[target] * self.k0 + table[index].phase),
-                np.exp(-2 * self.distance[target] * table[index].lamb)), self.sig),
+                np.exp(-2 * self.distance[target] * table[index].lamb)), self.sig2),
                 table[index].amp) / (self.distance[target] ** 2) * polar
             self.chi_1st[target] = deltaE_shift(self.k0, chi0, de)
         else:
@@ -127,7 +128,7 @@ class TABLE_POL:
             index = np.where(self.length == round(self.distance[target], self.decimals))[0][0]
             if not type(table[index]) == FEFF:
                 try:
-                    table[index] = FEFF(file + r'\feff%d.dat' % index, self.k0, self.s02)
+                    table[index] = FEFF(file + r'\feff%d.dat' % index, self.k0, self.s02, self.weight)
                 except FileNotFoundError:
                     self.log_commute[target] = 0
                     return
@@ -135,9 +136,9 @@ class TABLE_POL:
             rpath = self.distance[target] * 2
             polar = 3 * ((self.coordinate[target][self.pol] -
                           self.coordinate[0][self.pol]) / self.distance[target]) ** 2 if self.pol >= 0 else 1
-            chi0 = np.multiply(np.multiply(
+            chi0 = np.multiply(np.multiply(np.multiply(
                 np.sin(2 * rpath * self.k0 + table[index].phase),
-                np.exp(-2 * rpath * table[index].lamb)),
+                np.exp(-2 * rpath * table[index].lamb)), self.sig2),
                 table[index].amp) / (rpath ** 2) * polar
             self.chi_commute[target] = deltaE_shift(self.k0, chi0, de)
         else:
@@ -196,9 +197,10 @@ class TABLE_POL:
         index = (index_i * self.angle.size + index_j) * self.length.size + index_k
         if self.read_feff(index, table2nd, file2nd):
             self.log_2nd[step1][step2] = 1
-            chi0 = np.multiply(np.multiply(np.sin(2 * rpath_dou * self.k0 + table2nd[index].phase),
-                                           np.exp(-2 * rpath_dou * table2nd[index].lamb)),
-                               table2nd[index].amp) / (rpath_dou ** 2) * (polar_1 + polar_2)
+            chi0 = np.multiply(np.multiply(np.multiply(
+                np.sin(2 * rpath_dou * self.k0 + table2nd[index].phase),
+                np.exp(-2 * rpath_dou * table2nd[index].lamb)), self.sig2),
+                table2nd[index].amp) / (rpath_dou ** 2) * (polar_1 + polar_2)
             self.chi_2nd[step1][step2] = deltaE_shift(self.k0, chi0, de)
         else:
             self.log_2nd[step1][step2] = 0
@@ -209,111 +211,13 @@ class TABLE_POL:
                 else:
                     polar_2 = 0
             self.log_3rd[step1][step2] = 1
-            chi0 = np.multiply(np.multiply(np.sin(2 * rpath_tri * self.k0 + table3rd[index].phase),
-                                           np.exp(-2 * rpath_tri * table3rd[index].lamb)),
-                               table3rd[index].amp) / (rpath_tri ** 2) * (polar_1 + polar_2)
+            chi0 = np.multiply(np.multiply(np.multiply(
+                np.sin(2 * rpath_tri * self.k0 + table3rd[index].phase),
+                np.exp(-2 * rpath_tri * table3rd[index].lamb)), self.sig2),
+                table3rd[index].amp) / (rpath_tri ** 2) * (polar_1 + polar_2)
             self.chi_3rd[step1][step2] = deltaE_shift(self.k0, chi0, de)
         else:
             self.log_3rd[step1][step2] = 0
-
-        '''if (not 130 < turning1 < 140) and rpath < 6:
-            index_i = np.where(self.length == round(self.distance[step1], 1))[0][0]
-            index_j = np.where(self.angle_degree >= round(turning1, 0))[0][0]
-            try:
-                index_k = np.where(self.length == round(vector, 1))[0][0]
-            except IndexError:
-                self.log_2nd[step1][step2] = 0
-                return
-            index = (index_i * self.angle.size + index_j) * self.length.size + index_k
-            if not type(self.double[index]) == FEFF:
-                try:
-                    self.double[index] = FEFF(self.folder + r'\table3\feff%d.dat' % index,
-                                              self.k0, self.s02)
-                except FileNotFoundError:
-                    print(self.distance[step1], self.distance[step2], vector, turning1)
-                    self.log_2nd[step1][step2] = 0
-                    return
-            self.log_2nd[step1][step2] = 1
-            polar_1 = 3 * ((self.coordinate[step1][self.pol] -
-                            self.coordinate[0][self.pol]) / self.distance[step1]) ** 2
-            polar_2 = 3 * ((self.coordinate[step2][self.pol] -
-                            self.coordinate[0][self.pol]) / self.distance[step2]) ** 2
-            self.chi_2nd[step1][step2] = np.multiply(
-                np.multiply(np.sin(2 * rpath * self.k0 + self.double[index].phase),
-                            np.exp(-2 * rpath * self.double[index].lamb)),
-                self.double[index].amp) / (rpath ** 2) * (polar_1 + polar_2)
-        else:
-            self.log_2nd[step1][step2] = 0
-        if turning1 < 90 or turning2 < 90:
-            if turning1 < 20:
-                rpath = self.distance[step1] + vector
-                dist_target = round(self.distance[step1], 1)
-                angle_target = round(turning1, 0)
-                polar = 3 * ((self.coordinate[step1][self.pol] -
-                             self.coordinate[0][self.pol]) / self.distance[step1]) ** 2
-            elif turning2 < 20:
-                rpath = self.distance[step2] + vector
-                dist_target = round(self.distance[step2], 1)
-                angle_target = round(turning2, 0)
-                polar = 3 * ((self.coordinate[step2][self.pol] -
-                             self.coordinate[0][self.pol]) / self.distance[step2]) ** 2
-            else:
-                self.log_3rd[step1][step2] = 0
-                return
-            if rpath < 6:
-                index_i = np.where(self.length == dist_target)[0][0]
-                index_j = np.where(self.angle_degree >= angle_target)[0][0] - 1
-                index_j = 0 if index_j < 0 else index_j
-                index_k = np.where(self.length == round(vector, 1))[0][0]
-                index = (index_i * self.angle.size + index_j) * self.length.size + index_k
-                if not type(self.triple[index]) == FEFF:
-                    try:
-                        self.triple[index] = FEFF(self.folder + r'\table4\feff%d.dat' % index, self.k0, self.s02)
-                    except FileNotFoundError:
-                        self.log_3rd[step1][step2] = 0
-                        return
-                self.log_3rd[step1][step2] = 1
-                self.chi_3rd[step1][step2] = np.multiply(np.multiply(
-                    np.sin(2 * rpath * self.k0 + self.triple[index].phase),
-                    np.exp(-2 * rpath * self.triple[index].lamb)),
-                    self.triple[index].amp) / (rpath ** 2) * polar
-        else:
-            turning3 = cal_angle(self.coordinate[step1], np.zeros(3), self.coordinate[step2])
-            if turning3 < 20:
-                rpath = self.distance[step1] + self.distance[step2]
-                if rpath < 6:
-                    vector = sqrt(((self.coordinate[step2] - self.coordinate[step1]) ** 2).sum())
-                    index_i = np.where(self.length == round(self.distance[step1], 1))[0][0]
-                    index_k = np.where(self.length == round(vector, 1))[0][0]
-                    if sqrt((self.length[index_i] - self.length[index_k]) ** 2) > self.distance[step2]:
-                        index_k -= 1
-                    for index_j in range(self.angle.size - 11, self.angle.size):
-                        c = round(self.length[index_i] ** 2 + self.length[index_k] ** 2
-                                  - 2 * self.length[index_i] * self.length[index_k]
-                                  * cos(pi - self.angle[index_j]), 5)
-                        angle_2 = acos(round((self.length[index_i] ** 2 + c - self.length[index_k] ** 2), 5)
-                                       / round(2 * self.length[index_i] * sqrt(c), 3))
-                        if (angle_2 / pi * 180) >= (180 - turning3):
-                            break
-                    index = (index_i * self.angle.size + index_j) * self.length.size + index_k
-                    if not type(self.triple[index]) == FEFF:
-                        try:
-                            self.triple[index] = FEFF(self.folder + r'\table4\feff%d.dat' % index, self.k0, self.s02)
-                        except FileNotFoundError:
-                            #print('%d %d %d %.4f' % (turning1, turning2, turning3, rpath))
-                            self.log_3rd[step1][step2] = 0
-                            return
-                    self.log_3rd[step1][step2] = 1
-                    polar_1 = 3 * ((self.coordinate[step1][self.pol] -
-                                    self.coordinate[0][self.pol]) / self.distance[step1]) ** 2
-                    polar_2 = 3 * ((self.coordinate[step2][self.pol] -
-                                    self.coordinate[0][self.pol]) / self.distance[step2]) ** 2
-                    self.chi_3rd[step1][step2] = np.multiply(np.multiply(
-                        np.sin(2 * rpath * self.k0 + self.triple[index].phase),
-                        np.exp(-2 * rpath * self.triple[index].lamb)),
-                        self.triple[index].amp) / (rpath ** 2) * (polar_1 + polar_2)
-            else:
-                self.log_3rd[step1][step2] = 0'''
 
     def create_multi(self):
         for i in range(1, self.amount):

@@ -102,22 +102,6 @@ def collect_pov():
     f.close()
     w.close()
 
-def image_list():
-    from instance import ATOMS
-    from ase.io import write
-    from ase.io.pov import get_bondpairs
-    co_group = read_coordinate()
-    cell = ATOMS('Cu')
-    bondpairs = get_bondpairs(cell.atoms, radius=1.1)
-    r = [{'Cu': 0.5}[at.symbol] for at in cell.atoms]
-    write(r'../image/image_origin.pov', cell.atoms, format='pov', radii=r, rotation='10z,-80x',
-          povray_settings=dict(canvas_width=200, bondatoms=bondpairs, transparent=0.7))
-    for i in range(len(co_group)):
-        bondpairs = get_bondpairs(cell.atoms, radius=1.1)
-        cell.atoms.set_positions(co_group[i])
-        r = [{'Cu': 0.1}[at.symbol] for at in cell.atoms]
-        write(r'image\image%d.pov' % i, cell.atoms, format='pov', radii=r, rotation='10z,-80x',
-              povray_settings=dict(canvas_width=200, bondatoms=bondpairs, transparent=0))
 
 def read_chi(f_rep, rep_size, pol_size):
     chi_x = []
@@ -144,24 +128,20 @@ def read_chi(f_rep, rep_size, pol_size):
     return np.array([np.asarray(chi_x), np.asarray(chi_y), np.asarray(chi_z)])
 
 
-def read_rep_substrate(f_rep, material, filter=True):
+def read_rep(f_rep, choice, local_size):
     rep_size = len(os.listdir(f_rep + r'\result'))
-    dist_rep = []
-    coor_filter = []
-    ele_rep = np.array([])
-    absorb = 1 if material == 'CuAlO' else 2
+    coor_rep = []
+    print(choice)
     if rep_size <= 0:
-        status = False
+        fail = True
     else:
-        status = True
-        coor_rep = []
+        fail = False
         for i in range(rep_size):
             with open(f_rep + r'\result\result%d.txt' % i, 'r') as f:
                 coor = np.array([])
-                ele = np.array([])
                 while True:
                     lines = f.readline()
-                    if not lines.find('final') == -1:
+                    if not lines.find(choice) == -1:
                         break
                 while True:
                     data = f.readline()
@@ -169,28 +149,25 @@ def read_rep_substrate(f_rep, material, filter=True):
                         break
                     temp = data.split()
                     coor = np.append(coor, np.array([float(temp[0]), float(temp[1]), float(temp[2])]))
-                    ele = np.append(ele, temp[4][:-1])
-                coor = coor.reshape((int(coor.size / 3), 3))
-            if coor.shape[0] > 3:
-                if i == 0:
-                    coor_rep.append(coor)
-                    ele_rep = ele.copy()
-                else:
-                    coor_rep.append(coor[-absorb:])
-            else:
-                coor_rep.append(coor[np.array([0, 2, 1])])
-                ele_rep = np.array(['Cu', 'S', 'O'])
-        if filter and coor_rep[0].shape[0] > 3:
-            index = tca_filter(coor_rep, ele_rep)
-        else:
-            index = np.arange(len(coor_rep))
-        if not index[0] == 0:
-            coor_rep[index[0]] = np.vstack((coor_rep[0][:-absorb], coor_rep[index[0]]))
-        for i in index:
-            coor_filter.append(coor_rep[i])
-            dist_rep.append(np.array([sqrt((_ ** 2).sum()) for _ in coor_rep[i]]))
-    return coor_filter, dist_rep, ele_rep, status
+            coor_rep.append(coor.reshape((int(coor.size / 3), 3))[-local_size:])
+    return np.asarray(coor_rep), fail
 
+
+def load_substrate(f_rep, local_size):
+    with open(f_rep + r'\result\result0.txt', 'r') as f:
+        coordinate_substrate = np.array([])
+        ele_substrate = np.array([])
+        f.readline()
+        while True:
+            temp = f.readline()
+            if not temp or temp.isspace():
+                break
+            temp = temp.split()
+            coordinate_substrate = np.append(coordinate_substrate,
+                                             np.array([float(temp[0]), float(temp[1]), float(temp[2])]))
+            ele_substrate = np.append(ele_substrate, temp[4][:-1])
+        coordinate_substrate = coordinate_substrate.reshape(int(coordinate_substrate.size/3), 3)
+    return coordinate_substrate[:-local_size], ele_substrate[:-local_size]
 
 def tca_filter(coor, ele):
     y1 = -1.97
@@ -238,31 +215,22 @@ def tca_filter(coor, ele):
     return filtered
 
 
-def select_atom(substrate, coor, ele, nearest=True):
+def select_atom(surface_c, surface_e, local_c, local_e, rpath):
     coordinate = []
     dist = []
     element = []
-    index = np.arange(ele.size-2, dtype=int)
-    '''for i in range(ele.size):
-        if ele[i] == 'O':
-            index = np.append(index, i)'''
-    for i in range(coor.shape[0]):
-        temp = coor[i].copy()
-        temp_ele = np.array(['Cu', 'S'])
-        if nearest:
-            index_nearest = np.argmin(np.array([sqrt(((substrate[_] - temp[0]) ** 2).sum()) for _ in index]))
-            temp = np.vstack((temp, substrate[index[index_nearest]]))
-            temp_ele = np.append(temp_ele, ele[index[index_nearest]])
-        else:
-            for _ in index:
-                if sqrt(((substrate[_] - temp[0]) ** 2).sum()) < 2.5:
-                    temp = np.vstack((temp, substrate[_]))
-                    temp_ele = np.append(temp_ele, ele[_])
+    for i in range(local_c.shape[0]):
+        temp = local_c[i].copy()
+        temp_ele = local_e.copy()
+        for j in range(surface_e.size):
+            if sqrt(((surface_c[j] - temp[0]) ** 2).sum()) < rpath:
+                temp = np.vstack((temp, surface_c[j]))
+                temp_ele = np.append(temp_ele, surface_e[j])
         temp -= temp[0]
         coordinate.append(temp)
         element.append(temp_ele)
         dist.append(np.array([sqrt((temp[_] ** 2).sum()) for _ in range(temp.shape[0])]))
-    return np.asarray(coordinate), np.asarray(dist), np.asarray(element)
+    return coordinate, dist, element
 
 
 def plot_bondanlge(coor, ele):
@@ -277,9 +245,9 @@ def plot_bondanlge(coor, ele):
 
 
 def plot_TiO2(coor, ele, graph, local=False):
-    index = np.arange(ele.size - 2, dtype=int) if not local else np.array([], dtype=int)
-    for i in range(ele.size - 2):
-        if ele[i] == 'Ti' or ele[i] == 'Al':
+    index = np.arange(ele.size, dtype=int) if not local else np.array([], dtype=int)
+    for i in range(ele.size):
+        if ele[i] == 'Ti':
             color = 'grey'
         else:
             if coor[i][2] > 0:
@@ -305,8 +273,15 @@ def plot_TiO2(coor, ele, graph, local=False):
 
 
 def plot_Al2O3(coor, ele, graph):
-    for i in range(ele.size - 1):
-        color = 'grey' if ele[i] == 'Al' else 'red'
+    for i in range(ele.size):
+        color = 'red'
+        if ele[i] == 'Al':
+            if coor[i][2] < 0:
+                color = 'dimgray'
+            elif coor[i][2] == 0:
+                color = 'darkgray'
+            else:
+                color = 'lightgray'
         size = 0.4 if ele[i] == 'O' else 0.6
         graph.addItem(scatter(coor[i][0], coor[i][1], coor[i][2], c=color, scale=size))
     '''for i in range(ele.size - 2):  # substrate bonds
@@ -319,112 +294,69 @@ def plot_Al2O3(coor, ele, graph):
     graph.addItem(line([0, 0], [0, 0], [-5, 5], c='blue', width=3))
 
 
-def plot_on_substrate(coor, substrate, ele, material, graph):
+def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
     item_scatter = np.array([])
     item_cylinder = []
-    absorb = 1 if material == 'CuAlO' else 2
-    '''for rep in coor:
-        coordinate = rep[0].copy()
-        ne = np.array([], dtype=int)
-        for j in range(ele.size - absorb):
-            if ele[j] == 'O' and sqrt(((rep[0] - substrate[j]) ** 2).sum()) < 2.4:
-                coordinate = np.vstack((coordinate, substrate[j]))
-                ne = np.append(ne, j)
-        k = np.argmin(np.array([sqrt(((coordinate[_] - rep[0]) ** 2).sum()) for _ in range(1, coordinate.shape[0])]))
-        rep -= substrate[ne[k]]
-        for i in range(1):
-            if rep[i][0] > 0:
-                rep[..., 0] *= -1
-            if rep[i][1] > 0:
-                rep[..., 1] *= -1
-        rep += substrate[45]'''
-    aver = np.zeros(3)
-    for rep in coor:
-        for i in range(absorb):
-            color = ['brown', 'yellow']
-            size = [0.3, 0.3]
-            item_scatter = np.append(item_scatter, scatter(rep[i][0], rep[i][1], rep[i][2], c=color[i], scale=size[i]))
+    color = ['brown', 'yellow', 'green', 'orange', 'cyan', 'red', 'purple']
+    for i in range(local_c.shape[0]):
+        for j in range(local_c.shape[1]):
+            item_scatter = np.append(item_scatter, scatter(local_c[i][j][0], local_c[i][j][1],
+                                                           local_c[i][j][2], c=color[j], scale=0.3))
             graph.addItem(item_scatter[-1])
-        aver += rep[0]
-    aver /= coor.shape[0]
-    graph.addItem(cylinder([aver[0], substrate[45][0]], [aver[1], substrate[45][1]], [aver[2], substrate[45][2]],
-                                                                  c='k', alpha=1, width=0.1))
-    for rep in coor:
+
         item_cylinder_rep = np.array([])
-        flag = False
-        for i in range(ele.size - absorb):
-            if sqrt(((rep[0] - substrate[i]) ** 2).sum()) < 2.4:
-                if ele[i] == 'Al':
-                    flag = True
-                    break
-        if not flag:
-            continue
-        for i in range(ele.size - absorb):
-            if sqrt(((rep[0] - substrate[i]) ** 2).sum()) < 3:
-                color = 'green' if ele[i] == 'Ti' else 'blue'
-                color = 'red' if sqrt(((rep[0] - substrate[i]) ** 2).sum()) > 2.4 else color
-                alpha = 1 if color == 'blue' else 0
-                width = 0.2 if not color == 'red' else 0.05
-                item_cylinder_rep = np.append(item_cylinder_rep, cylinder([rep[0][0], substrate[i][0]],
-                                                                          [rep[0][1], substrate[i][1]],
-                                                                          [rep[0][2], substrate[i][2]],
-                                                                          c=color, alpha=alpha, width=width))
-                graph.addItem(item_cylinder_rep[-1])
+        dist = np.array([])
+        add_list = np.array([], dtype=int)
+        for j in range(surface_e.size):
+            if sqrt(((local_c[i][0] - surface_c[j]) ** 2).sum()) < rpath:
+                dist = np.append(dist, sqrt(((local_c[i][0] - surface_c[j]) ** 2).sum()))
+                add_list = np.append(add_list, j)
+        nearest = add_list[np.argmin(dist)]
+        item_cylinder_rep = np.append(item_cylinder_rep, cylinder([local_c[i][0][0], surface_c[nearest][0]],
+                                                                  [local_c[i][0][1], surface_c[nearest][1]],
+                                                                  [local_c[i][0][2], surface_c[nearest][2]],
+                                                                  c='black', alpha=1, width=0.05))
+        graph.addItem(item_cylinder_rep[-1])
+        for j in range(1, local_c.shape[1]):
+            item_cylinder_rep = np.append(item_cylinder_rep, cylinder([local_c[i][0][0], local_c[i][j][0]],
+                                                                      [local_c[i][0][1], local_c[i][j][1]],
+                                                                      [local_c[i][0][2], local_c[i][j][2]],
+                                                                      c='black', alpha=1, width=0.05))
+            graph.addItem(item_cylinder_rep[-1])
         item_cylinder.append(item_cylinder_rep)
+    #item_scatter = item_scatter.reshape(local_c.shape[0], local_c.shape[1])
         # graph.addItem(cylinder([rep[0][0], rep[1][0]], [rep[0][1], rep[1][1]],
         # [rep[0][2], rep[1][2]], c='red', width=0.05))
     return item_scatter, item_cylinder
 
 
-def rdf_polarization(coor, dist, ele):
-    dist_o = np.array([])
-    azimuth_o = np.array([])
-    elevation_o = np.array([])
-    dist_s = np.array([])
-    azimuth_s = np.array([])
-    elevation_s = np.array([])
-    dist_ti = np.array([])
-    azimuth_ti = np.array([])
-    elevation_ti = np.array([])
-    bond_angle = np.array([])
-    for i in range(coor.shape[0]):
-        if not coor[i][1][0] == 0:
-            azimuth_s = np.append(azimuth_s, round(atan(coor[i][1][1] / coor[i][1][0]) / pi * 180, 0))
-            if coor[i][1][0] < 0:
-                azimuth_s[-1] += 180
-        else:
-            azimuth_s = np.append(azimuth_s, 90)
-            if coor[i][1][1] < 0:
-                azimuth_s[-1] += 180
-        elevation_s = np.append(elevation_s, round(acos(coor[i][1][2] / dist[i][1]) / pi * 180, 0))
-        dist_s = np.append(dist_s, round(dist[i][1], 2))
-
-        for j in range(2, coor[i].shape[0]):
-            if not coor[i][j][0] == 0:
-                azi = round(atan(coor[i][j][1] / coor[i][j][0]) / pi * 180, 0)
-                if coor[i][j][0] < 0:
-                    azi += 180
+def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
+    if select.size == 0:
+        select = np.arange(len(ele))
+    size = sym.size if sym.size <= 3 else 3
+    stat_d = [np.array([])] * sym.size
+    stat_a = [np.array([])] * sym.size
+    stat_e = [np.array([])] * sym.size
+    label = [np.array([], dtype=int)] * sym.size
+    for rep in select:
+        for i in range(1, ele[rep].size):
+            locate = np.where(ele[rep][i] == sym[:size])[0][0]
+            label[locate] = np.append(label[locate], rep)
+            if not coor[rep][i][0] == 0:
+                azi = abs(round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0))
+                azi = azi if azi < 90 else 180 - azi
             else:
-                azi = 270 if coor[i][j][1] < 0 else 90
-            polar = round(180 - acos(coor[i][j][2] / dist[i][j]) / pi * 180, 0)
-            distance = round(dist[i][j], 2)
-            if ele[i][j] == 'O':
-                azimuth_o = np.append(azimuth_o, azi)
-                elevation_o = np.append(elevation_o, polar)
-                dist_o = np.append(dist_o, distance)
-            else:
-                azimuth_ti = np.append(azimuth_ti, azi)
-                elevation_ti = np.append(elevation_ti, polar)
-                dist_ti = np.append(dist_ti, distance)
+                azi = 90
+            stat_a[locate] = np.append(stat_a[locate], azi)
+            stat_e[locate] = np.append(stat_e[locate], round(acos(coor[rep][i][2] / dist[rep][i]) / pi * 180, 0))
+            stat_d[locate] = np.append(stat_d[locate], round(dist[rep][i], 2))
 
-        azimuth_o[np.where(azimuth_o > 90)[0]] -= 180
-        azimuth_o[np.where(azimuth_o < 0)[0]] *= -1
-        azimuth_s[np.where(azimuth_s > 90)[0]] -= 180
-        azimuth_s[np.where(azimuth_s < 0)[0]] *= -1
-        azimuth_ti[np.where(azimuth_ti > 90)[0]] -= 180
-        azimuth_ti[np.where(azimuth_ti < 0)[0]] *= -1
         #bond_angle = np.append(bond_angle, 180 - cal_angle(coor[i][1], coor[i][0], coor[i][2]))
-    rdf = [dist_o, azimuth_o, elevation_o, dist_s, azimuth_s, elevation_s, dist_ti, azimuth_ti, elevation_ti]
+    rdf = [stat_d[0], stat_a[0], stat_e[0]]
+    for i in range(1, size):
+        rdf.append(stat_d[i])
+        rdf.append(stat_a[i])
+        rdf.append(stat_e[i])
     '''ax = np.array([plt.subplot(2, 3, _ + 1) for _ in range(6)])
     name = ['r-O', 'φ-O', 'θ-O', 'r-S', 'φ-S', 'θ-S']
     urdf = [np.unique(rdf[_], return_counts=True) for _ in range(7)]
@@ -442,62 +374,39 @@ def rdf_polarization(coor, dist, ele):
 
     # print('%.1f %.1f %.1f %.1f' % (elevation_o.mean(), sqrt(elevation_o.var()), elevation_s.mean(), sqrt(elevation_s.var())))
 
-    return rdf
+    return rdf, label
 
 
-def plot_rotate(substrate, coor, ele, material, graph, nearest=True, color_assign=''):
-    # color = ['blue', 'red', 'orange', 'yellow', 'green', 'cyan', 'purple']
-    color = ['blue', 'yellow', 'red', 'red', 'red', 'red', 'red']
-    graph.addItem(scatter(0, 0, 0, c='brown', scale=0.6))
+def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph):
+    color = ['brown', 'yellow', 'green', 'orange', 'cyan', 'red', 'purple']
+    #color = ['blue', 'yellow', 'red', 'red', 'red', 'red', 'red']
+    graph.addItem(scatter(0, 0, 0, c=color[0], scale=0.3))
     graph.addItem(line([-3, 3], [0, 0], [0, 0], c='black'))
     graph.addItem(line([0, 0], [-3, 3], [0, 0], c='black'))
     graph.addItem(line([0, 0], [0, 0], [-3, 3], c='black'))
-    item_rotate = []
-    absorb = 1 if material == 'CuAlO' else 2
-    for i in range(coor.shape[0]):
-        item_rotate_rep = np.array([])
-        distance = np.array([sqrt(((substrate[_] - coor[i][0]) ** 2).sum())
-                             for _ in range(substrate.shape[0])])
-        coordinate = coor[i].copy()
-        for j in range(ele.size - absorb):
-            if ele[j] == 'O' and distance[j] < 3:
-                coordinate = np.vstack((coordinate, substrate[j]))
-        cti = np.array([])
-        for j in range(ele.size - absorb):
-            if (ele[j] == 'Ti' or ele[j] == 'Al') and distance[j] < 2.4:
-                cti = np.append(cti, substrate[j])
-        if cti.size > 0:
-            cti = cti.reshape((int(cti.size / 3), 3))
-            cti -= coordinate[0]
-        coordinate -= coordinate[0]
-        if coordinate.shape[0] > 2:  # select nearest
-            k = np.argmin(np.array([sqrt((coordinate[_] ** 2).sum()) for _ in range(absorb, coordinate.shape[0])])) + absorb
-        if cti.size > 0:
-            for j in range(cti.shape[0]):
-                item_rotate_rep = np.append(item_rotate_rep, scatter(cti[j][0], cti[j][1], cti[j][2],
-                                                                     c='grey', scale=0.6))
-                graph.addItem(item_rotate_rep[-1])
-        for j in range(absorb, coordinate.shape[0]):
-            if nearest and j == k or not nearest:
-                colo = 'purple' if coordinate[j][2] + coor[i][0][2] > 0 else 'red'
-                if not color_assign == '':
-                    colo = color_assign
-                if absorb > 1:
-                    if coordinate[j][0] < 0:
-                        coordinate[..., 0] *= -1
-                        if cti.size > 0:
-                            cti[..., 0] *= -1
-                    if coordinate[j][1] < 0:
-                        coordinate[..., 1] *= -1
-                        if cti.size > 0:
-                            cti[..., 1] *= -1
-                    item_rotate_rep = np.append(item_rotate_rep,
-                                                scatter(coordinate[1][0], coordinate[1][1], coordinate[1][2],
-                                                        c='yellow', scale=0.3))
-                    graph.addItem(item_rotate_rep[-1])
-                item_rotate_rep = np.append(item_rotate_rep, scatter(coordinate[j][0], coordinate[j][1],
-                                                                     coordinate[j][2], c=colo, scale=0.4))
-                graph.addItem(item_rotate_rep[-1])
-        item_rotate.append(item_rotate_rep)
-        # ax.plot3D([coor[i][1][0], coor[i][2][0]], [coor[i][1][1], coor[i][2][1]], [coor[i][1][2], coor[i][2][2]], c='black')
-    return item_rotate
+    item_list = []
+    item_rep = np.array([])
+    for i in range(local_c.shape[0]):
+        for j in range(1, local_e.size):
+            temp = local_c[i][j] - local_c[i][0]
+            item_rep = np.append(item_rep, scatter(temp[0], temp[1], temp[2], c=color[j], scale=0.3))
+            graph.addItem(item_rep[-1])
+        for j in range(surface_e.size):
+            if sqrt(((surface_c[j] - local_c[i][0]) ** 2).sum()) < rpath:
+                temp = surface_c[j] - local_c[i][0]
+                if surface_e[j] == 'O':
+                    c = 'purple' if surface == 'TiO2' and surface_c[j][2] > 0 else 'red'
+                else:
+                    if surface_e[j] == 'Al':
+                        if surface_c[j][2] < 0:
+                            c = 'dimgray'
+                        elif surface_c[j][2] == 0:
+                            c = 'darkgray'
+                        else:
+                            c = 'lightgray'
+                    else:
+                        c = 'silver'
+                item_rep = np.append(item_rep, scatter(temp[0], temp[1], temp[2], c=c, scale=0.3))
+                graph.addItem(item_rep[-1])
+        item_list.append(item_rep)
+    return item_list
