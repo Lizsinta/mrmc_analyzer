@@ -4,8 +4,7 @@ from math import sqrt, pi, atan, cos, sin, acos
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mrmc_package import cal_angle
-from .qtgraph import scatter, cylinder, line, bar
+from mrmc_package import cal_angle, scatter, cylinder, line, bar
 
 
 def read_shell_data():
@@ -385,8 +384,8 @@ def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph):
     graph.addItem(line([0, 0], [-3, 3], [0, 0], c='black'))
     graph.addItem(line([0, 0], [0, 0], [-3, 3], c='black'))
     item_list = []
-    item_rep = np.array([])
     for i in range(local_c.shape[0]):
+        item_rep = np.array([])
         for j in range(1, local_e.size):
             temp = local_c[i][j] - local_c[i][0]
             item_rep = np.append(item_rep, scatter(temp[0], temp[1], temp[2], c=color[j], scale=0.3))

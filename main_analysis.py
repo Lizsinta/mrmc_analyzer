@@ -118,6 +118,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.heightAction.triggered.connect(self.select)
         self.readAction.triggered.connect(self.read)
         self.saveAction.triggered.connect(self.save)
+        self.outputAction.triggered.connect(self.output)
+        self.rfSlider.valueChanged.connect(self.rf_filter)
         self.folder = ''
         self.rangeMenu.setEnabled(False)
         self.d_oAction.setChecked(True)
@@ -212,7 +214,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             sig2 = float(f.readline().split(':')[1])
             for i in range(3):
                 f.readline()
-            rpath = float(f.readline().split(':')[1])
+            self.rpath = float(f.readline().split(':')[1])
             temp = f.readline().split(':')[1].strip()
             if temp == 'True' or temp == 'true' or temp == '1':
                 ms = True
@@ -225,8 +227,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             f_material = lines.split(lines.split(':')[0] + ':')[1].split('\n')[0].strip()
         if not self.surface == '':
             self.select_c, self.select_d, self.select_e = select_atom(self.surface_c, self.surface_e,
-                                                                      self.local_c, self.local_e, rpath)
+                                                                      self.local_c, self.local_e, self.rpath)
         print(self.local_c.shape)
+        self.current_rep = np.arange(self.rep)
 
         if self.surface == 'Al2O3':
             self.symbol = np.append(self.local_e[1:], ['O', 'Al'])
@@ -283,10 +286,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #ax[2].set_xlabel(r'$k[Å^{-1}]$')
         #plt.show()
 
-        self.item_r = plot_rotate(self.surface_c, self.surface_e, self.local_c, self.local_e, rpath, self.surface,
+        self.item_r = plot_rotate(self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath, self.surface,
                                   self.rota)
 
-        self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, self.local_c, rpath, self.subs)
+        self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, self.local_c, self.rpath, self.subs)
 
         self.line_exp = np.array([line(x=self.exp[_].k, y=self.exp[_].chi, c='black', width=3)
                                   for _ in range(self.exp.size)])
@@ -297,6 +300,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             for j in range(self.rep):
                 self.line_chi[i][j] = line(x=self.exp[0].k, y=table[i][j].chi, c='red', alpha=0.3)
                 self.widget_plot[i].addItem(self.line_chi[i][j])
+        self.r_factor = np.zeros(self.rep)
+
+        for i in range(self.rep):
+            for j in range(self.exp.size):
+                self.r_factor[i] += self.exp[j].r_factor(table[j][i].chi)
+        self.rf_range = np.linspace(np.min(self.r_factor), np.max(self.r_factor), 100)
+        self.rfLabel.setText('r-factor filter (<=%.3f)' % self.rf_range[-1])
+        self.rf_rep = np.arange(self.rep)
 
         self.line_aver = np.zeros(3, dtype=pg.PlotDataItem)
         for i in range(self.exp.size):
@@ -314,13 +325,95 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def save(self):
         address = self.folder if not self.folder == '' else os.getcwd()
-        name = QFileDialog.getSaveFileName(self, 'select path...', address + '/distribution.png', 'png(*.png)')
+        name = QFileDialog.getSaveFileName(self, 'select path...', address + r'\distribution.png', 'png(*.png)')
         if name[0] == '':
             return
         self.widget_dict[self.range_target].removeItem(self.region_line)
         fig = self.g2dWidget.grab()
         self.widget_dict[self.range_target].addItem(self.region_line)
         fig.save(name[0], 'PNG')
+
+    def output(self):
+        address = self.folder + r'/output'
+        index = int(1)
+        while True:
+            if os.path.isdir(address):
+                name_new = address + str(index)
+                if os.path.isdir(name_new):
+                    index += 1
+                else:
+                    address = name_new
+                    break
+            else:
+                break
+        os.makedirs(address)
+        os.makedirs(address + r'\result')
+        os.popen('copy "%s" "%s"' % (self.folder + r'\mrmc.inp', address + r'\mrmc.inp'))
+        os.popen('copy "%s" "%s"' % (self.folder + r'\info.txt', address + r'\info.txt'))
+        os.popen('copy "%s" "%s"' % (self.folder + r'\model.dat', address + r'\model.dat'))
+        for i in range(self.current_rep.size):
+            os.popen('copy "%s" "%s"' % (self.folder + r'\result\result%d.txt' % self.current_rep[i],
+                                         address + r'\result\result%d.txt' % i))
+        with open(address + r'\mrmc.inp', 'r+') as f:
+            while True:
+                posi = f.tell()
+                line = f.readline()
+                if not line.find('replicas_size') == -1:
+                    f.seek(posi)
+                    f.write(('replicas_size:%d' % self.current_rep.size).ljust(len(line) - 1) + '\n')
+                    break
+        with open(address + r'\info.txt', 'r+') as f:
+            while True:
+                posi = f.tell()
+                line = f.readline()
+                if not line.find('best_R_factor') == -1:
+                    f.seek(posi)
+                    best_r = np.array([float(self.widget_plot[_].plotItem.legend.getLabel(self.line_aver[_]).text)
+                                       for _ in range(self.exp.size)])
+                    data = 'best_R_factor([001], [1-10], [110]): %.6f (' % best_r.sum()
+                    for i in best_r:
+                        data += str(i) + ' '
+                    data = (data[:-1] + ')').ljust(len(line) - 1) + '\n'
+                    f.write(data)
+                    break
+
+        with open(self.folder + r'\model.dat', 'r') as fi:
+            name = ['initial', 'final', 'best']
+            with open(address + r'\model.dat', 'w') as fo:
+                for _ in range(3):
+                    if not self.surface == '':
+                        while True:
+                            line = fi.readline()
+                            if not line.find('[%s surface model]' % name[_]) == -1:
+                                break
+                            if not line.find('[best model]') == -1:
+                                break
+                        fo.write(line)
+                        temp_c = np.array([])
+                        for i in range(self.surface_e.size):
+                            fo.write(fi.readline())
+                        for i in range(self.local_e.size):
+                            for rep in range(self.rep):
+                                line = fi.readline()
+                                if np.where(self.current_rep == rep)[0].size > 0:
+                                    fo.write(line)
+                                    temp = line.split()
+                                    temp_c = np.append(temp_c, np.array([float(temp[1]), float(temp[2]), float(3)]))
+                        temp_c = temp_c.reshape((self.local_e.size, self.current_rep.size, 3))
+                        temp_c = temp_c.transpose(1, 0, 2)
+                        fo.write('\n')
+                    fo.write('[%s local model]\n' % name[_])
+                    fo.write('%s %.6f %.6f %.6f\n' % (self.local_e[0], 0, 0, 0))
+                    for rep in range(temp_c.shape[0]):
+                        for i in range(1, temp_c.shape[1]):
+                            temp = temp_c[rep][i] - temp_c[rep][0]
+                            fo.write('%s %.6f %.6f %.6f\n' % (self.local_e[i], temp[0], temp[1], temp[2]))
+                        for i in range(self.surface_e.size):
+                            temp = self.surface_c[i] - temp_c[rep][0]
+                            if sqrt((temp**2).sum()) < self.rpath:
+                                fo.write('%s %.6f %.6f %.6f\n' % (self.surface_e[i], temp[0], temp[1], temp[2]))
+                    fo.write('\n')
+            QMessageBox.information(self, 'Output succeed', 'Output folder:\n%s' % address)
 
     def select(self):
         target = self.sender()
@@ -348,27 +441,36 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         graph_size = self.symbol.size if self.symbol.size <= 3 else 3
         data = self.rdf[self.range_target]
         label = self.rdf_label[self.range_target//graph_size]
+
         if manual:
-            hmin, hmax = self.region_line.getRegion()
-            index0 = np.where((hmin < data) & (data < hmax), False, True)
-            select0 = np.unique(label[index0])
-            for i in select0:
-                index0[np.where(label == i)[0]] = True
-            index1 = np.array([False] * self.rdf[self.range_target].size)
-            select1 = np.arange(self.rep)
+            select_remove = np.array([])
+            select_add = np.arange(self.rep)[self.rf_rep]
         else:
-            index0 = np.where((self.hmin < data) & (data < self.hmax), False, True)
-            select0 = np.unique(label[index0])
-            for i in select0:
-                index0[np.where(label == i)[0]] = True
             self.hmin, self.hmax = self.region_line.getRegion()
             index1 = np.where((self.hmin < data) & (data < self.hmax), False, True)
-            select1 = np.unique(label[index1])
-            for i in select1:
+            select0 = np.unique(label[index1])
+            for i in select0:
                 index1[np.where(label == i)[0]] = True
+            select_remove = np.unique(label[index1])
+            select_add = np.unique(label[np.invert(index1)])
+        self.flush(select_add, select_remove)
 
+    def rf_filter(self):
+        rf_max = self.rfSlider.value()
+        index0 = np.where(self.r_factor <= self.rf_range[rf_max], False, True)
+        rf_remove = np.arange(self.rep)[index0]
+        rf_add = np.arange(self.rep)[np.invert(index0)]
+        self.rfLabel.setText('r-factor filter (<=%.3f)' % self.rf_range[rf_max])
+        self.flush(rf_add, rf_remove)
+        self.rf_rep = rf_add.copy()
+
+    def flush(self, rep_add, rep_remove):
+        graph_size = self.symbol.size if self.symbol.size <= 3 else 3
+        flag = False
         for i in range(self.rep):
-            if np.where(select0 == i)[0].size == 0 and np.where(select1 == i)[0].size > 0:
+            if np.where(self.current_rep == i)[0].size > 0 and np.where(rep_remove == i)[0].size > 0\
+                    and np.where(self.rf_rep == i)[0].size > 0:
+                flag = True
                 self.subs.removeItem(self.item_s[i * self.local_size])
                 self.subs.removeItem(self.item_s[i * self.local_size + 1])
                 for j in range(self.item_c[i].size):
@@ -377,7 +479,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.rota.removeItem(self.item_r[i][j])
                 for pol in range(self.exp.size):
                     self.widget_plot[pol].removeItem(self.line_chi[pol][i])
-            elif np.where(select1 == i)[0].size == 0 and np.where(select0 == i)[0].size > 0:
+                self.current_rep = np.delete(self.current_rep, np.where(self.current_rep == i)[0][0])
+            elif np.where(self.current_rep == i)[0].size == 0 and np.where(rep_add == i)[0].size > 0\
+                    and np.where(self.rf_rep == i)[0].size > 0:
+                flag = True
                 self.subs.addItem(self.item_s[i * self.local_size])
                 self.subs.addItem(self.item_s[i * self.local_size + 1])
                 for j in range(self.item_c[i].size):
@@ -386,23 +491,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.rota.addItem(self.item_r[i][j])
                 for pol in range(self.exp.size):
                     self.widget_plot[pol].addItem(self.line_chi[pol][i])
+                self.current_rep = np.insert(self.current_rep, 0, i)
+        self.current_rep = np.sort(self.current_rep)
 
-        if (index0 == index1).all():
-            index1 = np.invert(index1)
-            select = np.unique(label[index1])
-            self.amountLine.setText('%d / %d' % (select.size, len(os.listdir(self.folder + r'/result'))))
-            rdf, label = rdf_polarization(self.select_c, self.select_d, self.select_e, self.symbol, select=select)
+        if flag:
+            self.amountLine.setText('%d / %d' % (self.current_rep.size, len(os.listdir(self.folder + r'/result'))))
+            if self.current_rep.size > 0:
+                rdf, label = rdf_polarization(self.select_c, self.select_d, self.select_e, self.symbol,
+                                              select=self.current_rep)
+            else:
+                rdf = [np.array([])] * graph_size * 3
             urdf = [np.unique(rdf[_], return_counts=True) for _ in range(graph_size * 3)]
-            urdf[self.range_target] = np.unique(self.rdf[self.range_target], return_counts=True)
+            # urdf[self.range_target] = np.unique(self.rdf[self.range_target], return_counts=True)
             for i in range(graph_size * 3):
-                if i < 6:
+                if i < 6 and self.current_rep.size > 0:
                     self.info_dict[i].setText('%.2f-%.2f' % (rdf[i].mean(), rdf[i].std()))
                 self.bar_spher[i].setOpts(x=urdf[i][0], height=urdf[i][1])
-                if (i == 0 or i == 3 or i == 6) and not urdf[i][0].size == 0:
-                    self.widget_dict[i].setXRange(np.min(urdf[i][0] - 0.01), np.max(urdf[i][0] + 0.01))
-            if index1.any():
+                '''if (i == 0 or i == 3 or i == 6) and not urdf[i][0].size == 0:
+                    self.widget_dict[i].setXRange(np.min(urdf[i][0] - 0.01), np.max(urdf[i][0] + 0.01))'''
+            if self.current_rep.size > 0:
                 for i in range(self.exp.size):
-                    chi = np.sum(self.chi[i][select], axis=0) / select.size
+                    chi = np.sum(self.chi[i][self.current_rep], axis=0) / self.current_rep.size
                     self.line_aver[i].setData(x=self.exp[0].k, y=chi)
                     self.widget_plot[i].plotItem.legend.items[0][1].setText('%.3f' % self.exp[i].r_factor(chi))
 

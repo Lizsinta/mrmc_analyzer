@@ -613,22 +613,8 @@
                 <property name="spacing">
                  <number>0</number>
                 </property>
-                <item row="4" column="2">
-                 <widget class="QLabel" name="b2aLabel">
-                  <property name="text">
-                   <string>Azimuth angle</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="6" column="2">
-                 <widget class="QLabel" name="b2eLabel">
-                  <property name="text">
-                   <string>Poloar angle</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="2">
-                 <widget class="QLineEdit" name="baLine">
+                <item row="3" column="2">
+                 <widget class="QLineEdit" name="b2rLine">
                   <property name="readOnly">
                    <bool>true</bool>
                   </property>
@@ -641,36 +627,35 @@
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="2">
-                 <widget class="QLabel" name="baLabel">
-                  <property name="text">
-                   <string>Bond angle</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="6" column="0">
-                 <widget class="QLabel" name="b1eLabel">
-                  <property name="text">
-                   <string>Polar angle</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="2">
-                 <widget class="QLabel" name="b2rLabel">
-                  <property name="text">
-                   <string>Bond distance</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="0">
-                 <widget class="QLineEdit" name="amountLine">
+                <item row="7" column="2">
+                 <widget class="QLineEdit" name="b2eLine">
                   <property name="readOnly">
                    <bool>true</bool>
                   </property>
                  </widget>
                 </item>
+                <item row="1" column="3">
+                 <spacer name="infoSpacer_2">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
                 <item row="3" column="0">
                  <widget class="QLineEdit" name="b1rLine">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLineEdit" name="b1aLine">
                   <property name="readOnly">
                    <bool>true</bool>
                   </property>
@@ -683,20 +668,6 @@
                   </property>
                  </widget>
                 </item>
-                <item row="3" column="2">
-                 <widget class="QLineEdit" name="b2rLine">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="7" column="2">
-                 <widget class="QLineEdit" name="b2eLine">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
                 <item row="2" column="0">
                  <widget class="QLabel" name="b1rLabel">
                   <property name="text">
@@ -704,10 +675,37 @@
                   </property>
                  </widget>
                 </item>
-                <item row="5" column="0">
-                 <widget class="QLineEdit" name="b1aLine">
-                  <property name="readOnly">
-                   <bool>true</bool>
+                <item row="1" column="1">
+                 <spacer name="infoSpacer">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QLabel" name="rfLabel">
+                  <property name="text">
+                   <string>r-factor filter</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QLabel" name="b2rLabel">
+                  <property name="text">
+                   <string>Bond distance</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="2">
+                 <widget class="QLabel" name="b2eLabel">
+                  <property name="text">
+                   <string>Poloar angle</string>
                   </property>
                  </widget>
                 </item>
@@ -725,31 +723,45 @@
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="1">
-                 <spacer name="infoSpacer">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                <item row="4" column="2">
+                 <widget class="QLabel" name="b2aLabel">
+                  <property name="text">
+                   <string>Azimuth angle</string>
                   </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
+                 </widget>
                 </item>
-                <item row="1" column="3">
-                 <spacer name="infoSpacer_2">
+                <item row="6" column="0">
+                 <widget class="QLabel" name="b1eLabel">
+                  <property name="text">
+                   <string>Polar angle</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLineEdit" name="amountLine">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QSlider" name="rfSlider">
+                  <property name="minimum">
+                   <number>0</number>
+                  </property>
+                  <property name="maximum">
+                   <number>99</number>
+                  </property>
+                  <property name="singleStep">
+                   <number>0</number>
+                  </property>
+                  <property name="value">
+                   <number>99</number>
+                  </property>
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
                   </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
+                 </widget>
                 </item>
                </layout>
               </item>
@@ -937,6 +949,7 @@
     </property>
     <addaction name="readAction"/>
     <addaction name="saveAction"/>
+    <addaction name="outputAction"/>
    </widget>
    <widget class="QMenu" name="rangeMenu">
     <property name="title">
@@ -1076,6 +1089,11 @@
   <action name="e_tiAction">
    <property name="text">
     <string>elevation3</string>
+   </property>
+  </action>
+  <action name="outputAction">
+   <property name="text">
+    <string>output...</string>
    </property>
   </action>
  </widget>
