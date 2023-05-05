@@ -238,53 +238,55 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.symbol = self.local_e[1:].copy()
         self.symbol = np.unique(self.symbol)
-        if not self.material == 'CuAlO':
-            graph_size = self.symbol.size if self.symbol.size <= 3 else 3
-            self.rdf, self.rdf_label = rdf_polarization(self.select_c, self.select_d, self.select_e, self.symbol)
-            urdf = [np.unique(self.rdf[_], return_counts=True) for _ in range(graph_size * 3)]
-            self.bar_spher = [bar(urdf[_][0], urdf[_][1], width=0.5) for _ in range(graph_size * 3)]
-            for i in range(graph_size * 3):
-                if i < 6:
-                    self.info_dict[i].setText('%.2f-%.2f' % (self.rdf[i].mean(), self.rdf[i].std()))
-                self.widget_dict[i].addItem(self.bar_spher[i])
-                self.widget_dict[i].setLabel('left', 'count')
-                if i == 0 or i == 3 or i == 6:
-                    self.widget_dict[i].setLabel('bottom', 'distance', unit='Å')
-                    self.bar_spher[i].setOpts(width=0.005)
-                    self.widget_dict[i].setXRange(np.min(urdf[i][0]) - 0.01, np.max(urdf[i][0]) + 0.01)
-                else:
-                    self.widget_dict[i].setLabel('bottom', 'angle', unit='°')
-            for i in range(graph_size):
-                self.widget_dict[i * 3].setTitle('R (%s-%s)' % (self.local_e[0], self.symbol[i]),
+        self.rdf, self.rdf_label = rdf_polarization(self.select_c, self.select_d, self.select_e, self.symbol)
+        graph_size = 0
+        for i in self.rdf:
+            if i.size > 0:
+                graph_size += 1
+        urdf = [np.unique(self.rdf[_], return_counts=True) for _ in range(graph_size)]
+        self.bar_spher = [bar(urdf[_][0], urdf[_][1], width=0.5) for _ in range(graph_size)]
+        for i in range(graph_size):
+            if i < 6:
+                self.info_dict[i].setText('%.2f-%.2f' % (self.rdf[i].mean(), self.rdf[i].std()))
+            self.widget_dict[i].addItem(self.bar_spher[i])
+            self.widget_dict[i].setLabel('left', 'count')
+            if i == 0 or i == 3 or i == 6:
+                self.widget_dict[i].setLabel('bottom', 'distance', unit='Å')
+                self.bar_spher[i].setOpts(width=0.005)
+                self.widget_dict[i].setXRange(np.min(urdf[i][0]) - 0.01, np.max(urdf[i][0]) + 0.01)
+            else:
+                self.widget_dict[i].setLabel('bottom', 'angle', unit='°')
+        for i in range(graph_size//3):
+            self.widget_dict[i * 3].setTitle('R (%s-%s)' % (self.local_e[0], self.symbol[i]),
+                                             color='#000000', size='20pt')
+            self.widget_dict[i * 3 + 1].setTitle('φ (%s-%s)' % (self.local_e[0], self.symbol[i]),
                                                  color='#000000', size='20pt')
-                self.widget_dict[i * 3 + 1].setTitle('φ (%s-%s)' % (self.local_e[0], self.symbol[i]),
-                                                     color='#000000', size='20pt')
-                self.widget_dict[i * 3 + 2].setTitle('θ (%s-%s)' % (self.local_e[0], self.symbol[i]),
-                                                     color='#000000', size='20pt')
-            self.do.plotItem.enableAutoRange(axis='x', enable=False)
-            self.exp = np.array([EXP(self.exp_name[i], k[0], k[1], r[0], r[1]) for i in range(self.exp_name.size)])
+            self.widget_dict[i * 3 + 2].setTitle('θ (%s-%s)' % (self.local_e[0], self.symbol[i]),
+                                                 color='#000000', size='20pt')
+        self.do.plotItem.enableAutoRange(axis='x', enable=False)
+        self.exp = np.array([EXP(self.exp_name[i], k[0], k[1], r[0], r[1]) for i in range(self.exp_name.size)])
 
-        table = np.zeros((3, self.rep), dtype=TABLE_POL)
-        for pol in range(3):
+        table = np.zeros((self.exp.size, self.rep), dtype=TABLE_POL)
+        for pol in range(self.exp.size):
             for i in range(self.rep):
                 table[pol][i] = TABLE_POL(self.exp[pol].k_start, self.exp[pol].k_end, self.exp[pol].r_start,
                                           self.exp[pol].r_end, sig2, dE, s0, self.exp[pol].k0,
                                           self.select_c[i], self.select_e[i], f_material, pol, ms_en=ms, weight=weight)
-        chi_sum = np.zeros((3, self.exp[0].k.size))
-        #ax = np.array([plt.subplot(3, 1, _ + 1) for _ in range(3)])
-        #direct = ['[001]', '[1-10]', '[110]']
-        for pol in range(3):
+        chi_sum = np.zeros((self.exp.size, self.exp[0].k.size))
+        ax = np.array([plt.subplot(3, 1, _ + 1) for _ in range(3)])
+        direct = ['[001]', '[1-10]', '[110]']
+        for pol in range(self.exp.size):
             for i in range(self.rep):
                 chi_sum[pol] += table[pol][i].chi
             chi_sum[pol] /= self.rep
             print(self.exp[pol].r_factor(chi_sum[pol]))
-            '''ax[pol].plot(self.exp[pol].k, self.exp[pol].chi, c='k', label='expe %s'%direct[pol])
-            #ax[pol].plot(self.exp[pol].r, np.abs(norm_fft(chi_sum[pol], self.exp[pol].r.size)), c='r', label='average %s'%direct[pol])
-            ax[pol].plot(self.exp[pol].k, chi_sum[pol], c='r', label='average %s' % direct[pol])
+            ax[pol].plot(self.exp[pol].r, self.exp[pol].ft, c='k', label='expe %s'%direct[pol])
+            ax[pol].plot(self.exp[pol].r, np.abs(norm_fft(chi_sum[pol], self.exp[pol].r.size)), c='r', label='average %s'%direct[pol])
+            #ax[pol].plot(self.exp[pol].k, chi_sum[pol], c='r', label='average %s' % direct[pol])
             ax[pol].legend(loc='lower right')
-            ax[pol].set_ylabel('χ %s'%direct[pol])'''
-        #ax[2].set_xlabel(r'$k[Å^{-1}]$')
-        #plt.show()
+            ax[pol].set_ylabel('χ %s'%direct[pol])
+        ax[2].set_xlabel(r'$k[Å^{-1}]$')
+        plt.show()
 
         self.item_r = plot_rotate(self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath, self.surface,
                                   self.rota)
@@ -305,11 +307,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for i in range(self.rep):
             for j in range(self.exp.size):
                 self.r_factor[i] += self.exp[j].r_factor(table[j][i].chi)
+        self.rfSlider.setValue(99)
         self.rf_range = np.linspace(np.min(self.r_factor), np.max(self.r_factor), 100)
         self.rfLabel.setText('r-factor filter (<=%.3f)' % self.rf_range[-1])
         self.rf_rep = np.arange(self.rep)
 
-        self.line_aver = np.zeros(3, dtype=pg.PlotDataItem)
+        self.line_aver = np.zeros(self.exp.size, dtype=pg.PlotDataItem)
         for i in range(self.exp.size):
             self.line_aver[i] = line(x=self.exp[i].k, y=chi_sum[i], c='blue', width=3)
             self.line_aver[i].opts['name'] = '%.3f' % self.exp[i].r_factor(chi_sum[i])
@@ -461,18 +464,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         rf_remove = np.arange(self.rep)[index0]
         rf_add = np.arange(self.rep)[np.invert(index0)]
         self.rfLabel.setText('r-factor filter (<=%.3f)' % self.rf_range[rf_max])
+        if self.rf_rep.size < rf_add.size:
+            self.rf_rep = rf_add.copy()
         self.flush(rf_add, rf_remove)
-        self.rf_rep = rf_add.copy()
+        if self.rf_rep.size > rf_add.size:
+            self.rf_rep = rf_add.copy()
 
     def flush(self, rep_add, rep_remove):
-        graph_size = self.symbol.size if self.symbol.size <= 3 else 3
         flag = False
         for i in range(self.rep):
             if np.where(self.current_rep == i)[0].size > 0 and np.where(rep_remove == i)[0].size > 0\
                     and np.where(self.rf_rep == i)[0].size > 0:
                 flag = True
-                self.subs.removeItem(self.item_s[i * self.local_size])
-                self.subs.removeItem(self.item_s[i * self.local_size + 1])
+                for j in range(self.local_size):
+                    self.subs.removeItem(self.item_s[i * self.local_size + j])
                 for j in range(self.item_c[i].size):
                     self.subs.removeItem(self.item_c[i][j])
                 for j in range(self.item_r[i].size):
@@ -496,16 +501,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         if flag:
             self.amountLine.setText('%d / %d' % (self.current_rep.size, len(os.listdir(self.folder + r'/result'))))
+            graph_size = 0
             if self.current_rep.size > 0:
                 rdf, label = rdf_polarization(self.select_c, self.select_d, self.select_e, self.symbol,
                                               select=self.current_rep)
-            else:
-                rdf = [np.array([])] * graph_size * 3
-            urdf = [np.unique(rdf[_], return_counts=True) for _ in range(graph_size * 3)]
+                for i in rdf:
+                    if i.size > 0:
+                        graph_size += 1
+            urdf = [np.unique(rdf[_], return_counts=True) for _ in range(graph_size)]
             # urdf[self.range_target] = np.unique(self.rdf[self.range_target], return_counts=True)
-            for i in range(graph_size * 3):
+            for i in range(graph_size):
                 if i < 6 and self.current_rep.size > 0:
-                    self.info_dict[i].setText('%.2f-%.2f' % (rdf[i].mean(), rdf[i].std()))
+                    if rdf[i].size > 0:
+                        self.info_dict[i].setText('%.2f-%.2f' % (rdf[i].mean(), rdf[i].std()))
+                    else:
+                        self.info_dict[i].setText('%.2f-%.2f' % (0, 0))
                 self.bar_spher[i].setOpts(x=urdf[i][0], height=urdf[i][1])
                 '''if (i == 0 or i == 3 or i == 6) and not urdf[i][0].size == 0:
                     self.widget_dict[i].setXRange(np.min(urdf[i][0] - 0.01), np.max(urdf[i][0] + 0.01))'''

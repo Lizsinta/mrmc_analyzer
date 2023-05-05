@@ -124,7 +124,14 @@ def read_chi(f_rep, rep_size, pol_size):
                     chi_y.append(chi_i)
                 else:
                     chi_z.append(chi_i)
-    return np.array([np.asarray(chi_x), np.asarray(chi_y), np.asarray(chi_z)])
+
+    if j == 0:
+        return np.array([np.asarray(chi_x)])
+    elif j == 1:
+        return np.array([np.asarray(chi_x), np.asarray(chi_y)])
+    else:
+        return np.array([np.asarray(chi_x), np.asarray(chi_y), np.asarray(chi_z)])
+
 
 
 def read_rep(f_rep, choice, local_size):
