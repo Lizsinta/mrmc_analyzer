@@ -233,9 +233,11 @@ def select_atom(surface_c, surface_e, local_c, local_e, rpath):
                 temp = np.vstack((temp, surface_c[j]))
                 temp_ele = np.append(temp_ele, surface_e[j])
         temp -= temp[0]
-        coordinate.append(temp)
-        element.append(temp_ele)
-        dist.append(np.array([sqrt((temp[_] ** 2).sum()) for _ in range(temp.shape[0])]))
+        temp_d = np.array([sqrt((temp[_] ** 2).sum()) for _ in range(local_e.size, temp.shape[0])])
+        align = np.append(np.arange(local_e.size), np.argsort(temp_d) + local_e.size)
+        coordinate.append(temp[align])
+        element.append(temp_ele[align])
+        dist.append(np.array([sqrt((coordinate[-1][_] ** 2).sum()) for _ in range(coordinate[-1].shape[0])]))
     return coordinate, dist, element
 
 
@@ -345,7 +347,7 @@ def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
     stat_e = [np.array([])] * sym.size
     label = [np.array([], dtype=int)] * sym.size
     for rep in select:
-        for i in range(1, ele[rep].size):
+        for i in range(1, 3):
             locate = np.where(ele[rep][i] == sym[:size])[0][0]
             label[locate] = np.append(label[locate], rep)
             if not coor[rep][i][0] == 0:
