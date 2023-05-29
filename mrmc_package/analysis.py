@@ -225,20 +225,24 @@ def select_atom(surface_c, surface_e, local_c, local_e, rpath):
     coordinate = []
     dist = []
     element = []
+    adsorb = np.array([], dtype=int)
     for i in range(local_c.shape[0]):
         temp = local_c[i].copy()
         temp_ele = local_e.copy()
+        temp_index = np.array([], dtype=int)
         for j in range(surface_e.size):
             if sqrt(((surface_c[j] - temp[0]) ** 2).sum()) < rpath:
                 temp = np.vstack((temp, surface_c[j]))
                 temp_ele = np.append(temp_ele, surface_e[j])
+                temp_index = np.append(temp_index, j)
         temp -= temp[0]
         temp_d = np.array([sqrt((temp[_] ** 2).sum()) for _ in range(local_e.size, temp.shape[0])])
         align = np.append(np.arange(local_e.size), np.argsort(temp_d) + local_e.size)
+        adsorb = np.append(adsorb, temp_index[np.argsort(temp_d)[0]])
         coordinate.append(temp[align])
         element.append(temp_ele[align])
         dist.append(np.array([sqrt((coordinate[-1][_] ** 2).sum()) for _ in range(coordinate[-1].shape[0])]))
-    return coordinate, dist, element
+    return coordinate, dist, element, adsorb
 
 
 def plot_bondanlge(coor, ele):
@@ -389,9 +393,9 @@ def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph):
     color = ['brown', 'yellow', 'green', 'orange', 'cyan', 'red', 'purple']
     #color = ['blue', 'yellow', 'red', 'red', 'red', 'red', 'red']
     graph.addItem(scatter(0, 0, 0, c=color[0], scale=0.3))
-    graph.addItem(line([-3, 3], [0, 0], [0, 0], c='black'))
-    graph.addItem(line([0, 0], [-3, 3], [0, 0], c='black'))
-    graph.addItem(line([0, 0], [0, 0], [-3, 3], c='black'))
+    graph.addItem(line([-3, 3], [0, 0], [0, 0], c='r'))
+    graph.addItem(line([0, 0], [-3, 3], [0, 0], c='g'))
+    graph.addItem(line([0, 0], [0, 0], [-3, 3], c='b'))
     item_list = []
     for i in range(local_c.shape[0]):
         item_rep = np.array([])

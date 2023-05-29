@@ -221,14 +221,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 ms = True
             elif temp == 'False' or temp == 'false' or temp == '0':
                 ms = False
+            fspace = f.readline().split(':')
+            if not fspace[0].find('fitting_space') == -1:
+                temp = fspace[1].strip()
+                if temp == 'K' or temp == 'k':
+                    self.fit_space = 'k'
+                elif temp == 'R' or temp == 'r':
+                    self.fit_space = 'r'
+                elif temp == 'X' or temp == 'x':
+                    self.fit_space = 'x'
+
             while True:
                 lines = f.readline()
                 if not lines.find('material_folder') == -1:
                     break
             f_material = lines.split(lines.split(':')[0] + ':')[1].split('\n')[0].strip()
         if not self.surface == '':
-            self.select_c, self.select_d, self.select_e = select_atom(self.surface_c, self.surface_e,
-                                                                      self.local_c, self.local_e, self.rpath)
+            self.select_c, self.select_d, self.select_e, self.adsorb = select_atom(
+                self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath)
         else:
             self.select_c = self.local_c.copy()
             self.select_d = np.array([])
@@ -277,13 +287,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.do.plotItem.enableAutoRange(axis='x', enable=False)
         self.exp = np.array([EXP(self.exp_name[i], k[0], k[1], r[0], r[1]) for i in range(self.exp_name.size)])
 
-        table = np.zeros((self.exp.size, self.rep), dtype=TABLE_POL)
+        self.table = np.zeros((self.exp.size, self.rep), dtype=TABLE_POL)
+        f_material = r'J:\Monte Carlo\cutio2'
         pol = np.arange(3) if self.exp.size == 3 else (np.arange(2) + 2)
         for i in range(self.exp.size):
             for j in range(self.rep):
-                table[i][j] = TABLE_POL(self.exp[i].k_start, self.exp[i].k_end, self.exp[i].r_start,
-                                        self.exp[i].r_end, sig2, dE, s0, self.exp[i].k0, self.select_c[j],
-                                        self.select_e[j], f_material, pol[i], ms_en=ms, weight=weight)
+                self.table[i][j] = TABLE_POL(self.exp[i].k_start, self.exp[i].k_end, self.exp[i].r_start,
+                                             self.exp[i].r_end, sig2, dE, s0, self.exp[i].k0, self.select_c[j],
+                                             self.select_e[j], f_material, pol[i], ms_en=ms, weight=weight)
         chi_sum = np.zeros((self.exp.size, self.exp[0].k.size))
         ft_sum = np.zeros((self.exp.size, self.exp[0].r.size))
         #ax = np.array([plt.subplot(3, 1, _ + 1) for _ in range(3)])
@@ -291,9 +302,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.chi = np.zeros((self.exp.size, self.rep, self.exp[0].k.size))
         for pol in range(self.exp.size):
             for i in range(self.rep):
-                self.chi[pol][i] = table[pol][i].chi
-                chi_sum[pol] += table[pol][i].chi
-                ft_sum[pol] += table[pol][i].ft
+                self.chi[pol][i] = self.table[pol][i].chi
+                chi_sum[pol] += self.table[pol][i].chi
+                ft_sum[pol] += self.table[pol][i].ft
             chi_sum[pol] /= self.rep
             ft_sum[pol] /= self.rep
             print(self.exp[pol].r_factor_chi(chi_sum[pol]))
@@ -319,7 +330,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.item_r = plot_rotate(self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath, self.surface,
                                   self.rota)
 
-        self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, self.local_c, self.rpath, self.subs)
+        shift_c = self.local_c.copy()
+        for rep in range(self.rep):
+            shift_c[rep] = self.local_c[rep] - self.surface_c[self.adsorb[rep]] + self.surface_c[45]
+
+        self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, shift_c, self.rpath, self.subs)
 
         self.line_exp = np.array([line(x=self.exp[_].k, y=self.exp[_].chi, c='black', width=3)
                                   for _ in range(self.exp.size)])
@@ -328,22 +343,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for i in range(self.exp.size):
             self.widget_plot[i].addItem(self.line_exp[i])
             for j in range(self.rep):
-                self.line_chi[i][j] = line(x=self.exp[0].k, y=table[i][j].chi, c='red', alpha=0.3)
+                self.line_chi[i][j] = line(x=self.exp[0].k, y=self.table[i][j].chi, c='red', alpha=0.3)
                 self.widget_plot[i].addItem(self.line_chi[i][j])
         self.r_factor = np.zeros(self.rep)
 
         for i in range(self.rep):
             for j in range(self.exp.size):
-                self.r_factor[i] += self.exp[j].r_factor_chi(table[j][i].chi)
+                self.r_factor[i] += self.exp[j].r_factor_chi(self.table[j][i].chi)
         self.rfSlider.setValue(99)
         self.rf_range = np.linspace(np.min(self.r_factor), np.max(self.r_factor), 100)
         self.rfLabel.setText('r-factor filter (<=%.3f)' % self.rf_range[-1])
         self.rf_rep = np.arange(self.rep)
 
         self.line_aver = np.zeros(self.exp.size, dtype=pg.PlotDataItem)
+        self.r_factor_temp = np.zeros(self.exp.size)
         for i in range(self.exp.size):
             self.line_aver[i] = line(x=self.exp[i].k, y=chi_sum[i], c='blue', width=3)
-            self.line_aver[i].opts['name'] = '%.3f' % self.exp[i].r_factor_chi(chi_sum[i])
+            self.r_factor_temp[i] = self.exp[i].r_factor_chi(chi_sum[i])
+            self.line_aver[i].opts['name'] = '%.3f' % self.r_factor_temp[i]
             self.widget_plot[i].addItem(self.line_aver[i])
 
         self.hmin = np.min(self.rdf[self.range_target]) - 0.01
@@ -363,6 +380,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         fig = self.g2dWidget.grab()
         self.widget_dict[self.range_target].addItem(self.region_line)
         fig.save(name[0], 'PNG')
+        with open(self.folder + r'/rdf.dat', 'w') as f:
+            f.write('Simulation folder: %s\n' % self.folder)
+            f.write('Selected replicas:\n')
+            for i in range(self.current_rep.size):
+                f.write('%d ' % self.current_rep[i])
+            f.write('\n')
+            f.write('R-factor: ')
+            for i in range(self.exp.size):
+                f.write('%.3f ' % self.r_factor_temp[i])
+            f.write('\n')
+            for i in range(self.symbol.size if self.symbol.size <= 2 else 2):
+                temp = self.info_dict[i * 3].text().split('-')
+                f.write('Bond distance[%s-%s]: %s±%s\n' % (self.local_e[0], self.symbol[i], temp[0], temp[1]))
+                temp = self.info_dict[i * 3 + 1].text().split('-')
+                f.write('Azimuth angle[%s-%s]: %s±%s\n' % (self.local_e[0], self.symbol[i], temp[0], temp[1]))
+                temp = self.info_dict[i * 3 + 2].text().split('-')
+                f.write('Polar angle[%s-%s]: %s±%s\n' % (self.local_e[0], self.symbol[i], temp[0], temp[1]))
 
     def output(self):
         address = self.folder + r'/output'
@@ -393,14 +427,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     f.seek(posi)
                     f.write(('replicas_size:%d' % self.current_rep.size).ljust(len(line) - 1) + '\n')
                     break
+        chi_sum =np.zeros(self.exp.size, self.exp[0].k.size)
+        ft_sum = np.zeros(self.exp.size, self.exp[0].r.size)
+        for pol in range(self.exp.size):
+            for i in self.current_rep:
+                self.chi[pol][i] = self.table[pol][i].chi
+                chi_sum[pol] += self.table[pol][i].chi
+                ft_sum[pol] += self.table[pol][i].ft
+            chi_sum[pol] /= self.current_rep.size
+            ft_sum[pol] /= self.current_rep.size
+        cross_sum = np.array(
+                [chi_sum[_] * np.transpose([ft_sum[_][self.exp[_].r_range]]) for _ in range(self.exp.size)])
         with open(address + r'\info.txt', 'r+') as f:
             while True:
                 posi = f.tell()
                 line = f.readline()
                 if not line.find('best_R_factor') == -1:
                     f.seek(posi)
-                    best_r = np.array([float(self.widget_plot[_].plotItem.legend.getLabel(self.line_aver[_]).text)
-                                       for _ in range(self.exp.size)])
+                    if self.fit_space == 'k':
+                        best_r = np.array([self.exp[_].r_factor_chi(chi_sum[_]) for _ in range(self.exp.size)])
+                    elif self.fit_space == 'r':
+                        best_r = np.array([self.exp[_].r_factor_ft(ft_sum[_]) for _ in range(self.exp.size)])
+                    else:
+                        best_r = np.array([self.exp[_].r_factor_cross(cross_sum[_]) for _ in range(self.exp.size)])
                     data = 'best_R_factor([001], [1-10], [110]): %.6f (' % best_r.sum()
                     for i in best_r:
                         data += str(i) + ' '
@@ -551,7 +600,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 for i in range(self.exp.size):
                     chi = np.sum(self.chi[i][self.current_rep], axis=0) / self.current_rep.size
                     self.line_aver[i].setData(x=self.exp[0].k, y=chi)
-                    self.widget_plot[i].plotItem.legend.items[0][1].setText('%.3f' % self.exp[i].r_factor_chi(chi))
+                    self.r_factor_temp[i] = self.exp[i].r_factor_chi(chi)
+                    self.widget_plot[i].plotItem.legend.items[0][1].setText('%.3f' % self.r_factor_temp[i])
 
     def save_3d_menu(self, pos):
         target = self.sender()
