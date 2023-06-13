@@ -391,6 +391,7 @@ class ATOMS:
                     self.element = np.append(self.element, self.surface_e[i])
         self.coordinate -= self.coordinate[0]
         self.distance = get_distance(self.coordinate)
+        self.t
 
     '''def create_cu(self, layer):
         from ase.cluster.cubic import FaceCenteredCubic
@@ -923,11 +924,18 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from scipy.fftpack import fft
 
-    '''expe = np.array([EXP(os.getcwd() + r'\Cu202_sum.rex', 3, 9, 1, 2.4),
-                     EXP(os.getcwd() + r'\Cu207_sum.rex', 3, 9, 1, 2.4),
-                     EXP(os.getcwd() + r'\Cu211_sum_d.rex', 3, 9, 1, 2.4)])'''
-    chi = CHI(r'D:\tri_angle\chi.dat', 0, 20, 0, 6)
-    plt.plot(chi.r, chi.ft, c='black')
+    '''expe = np.array([EXP(r'D:\simulation\Cu202_sum.rex', 3, 9, 1, 2.7),
+                     EXP(r'D:\simulation\Cu207_sum.rex', 3, 9, 1, 2.7),
+                     EXP(r'D:\simulation\Cu211_sum_d.rex', 3, 9, 1, 2.7)])'''
+    expe = EXP(r'D:\simulation\Cu202_sum.rex', 3, 9, 1, 2.7)
+    ax = plt.subplot(projection='3d')
+    x, y = np.meshgrid(expe.k, expe.r_cut)
+    ax.plot_surface(x, y, expe.cross, cmap='magma')
+    ax.plot(expe.k, expe.chi*np.max(expe.ft_cut), zs=3, zdir='y', c='k')
+    ax.plot(expe.r_cut, expe.ft_cut * np.max(expe.chi), zs=2.5, zdir='x', c='k')
+
+    #chi = CHI(r'D:\tri_angle\chi.dat', 0, 20, 0, 6)
+    #plt.plot(chi.r, chi.ft, c='black')
     '''rep = RMC4(0, expe, 0, [16, -3], 1, os.getcwd() + r'\cuos\substrate\test', 'CuTiO2', ini_flag=True)
     plt.plot(rep.table[0].k, rep.table[0].chi, c='red')
     rep.walk(tau=4e-2)

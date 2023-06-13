@@ -40,19 +40,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.plotx.setTitle('χ(k) [001]', color='#000000', size='20pt')
         self.plotx.setLabel('left', 'χ(k)')
         self.plotx.setLabel('bottom', 'k', unit='Å-1')
-        self.plotx.addLegend((0, 0))
+        self.plotx.addLegend((0, 0), labelTextSize='12pt', labelTextColor='k')
         self.chixLayout.addWidget(self.plotx)
         self.ploty = pg.PlotWidget(background=(255, 255, 255, 255))
         self.ploty.setTitle('χ(k) [1-10]', color='#000000', size='20pt')
         self.ploty.setLabel('left', 'χ(k)')
         self.ploty.setLabel('bottom', 'k', unit='Å-1')
-        self.ploty.addLegend((0, 0))
+        self.ploty.addLegend((0, 0), labelTextSize='12pt', labelTextColor='k')
         self.chiyLayout.addWidget(self.ploty)
         self.plotz = pg.PlotWidget(background=(255, 255, 255, 255))
         self.plotz.setTitle('χ(k) [110]', color='#000000', size='20pt')
         self.plotz.setLabel('left', 'χ(k)')
         self.plotz.setLabel('bottom', 'k', unit='Å-1')
-        self.plotz.addLegend((0, 0))
+        self.plotz.addLegend((0, 0), labelTextSize='12pt', labelTextColor='k')
         self.chizLayout.addWidget(self.plotz)
         self.widget_plot = {0: self.plotx, 1: self.ploty, 2: self.plotz}
 
@@ -171,6 +171,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             temp = f.readline().split()
             self.surface = temp[1] if len(temp) > 1 else ''
             dE = [float(_) for _ in f.readline().split()[1:]]
+            dE.append(13)
             k = [float(_) for _ in f.readline().split()[1:]]
             r = [float(_) for _ in f.readline().split()[1:]]
             print(k, r)
@@ -179,13 +180,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.statusbar.showMessage('No result file found', 3000)
             self.folder = ''
             return
-        if not self.surface == '':
+        '''if not self.surface == '':
             self.surface_c, self.surface_e = load_substrate(self.folder, self.local_size)
             if self.surface == 'Al2O3':
                 plot_Al2O3(self.surface_c, self.surface_e, self.subs)
             elif self.surface == 'TiO2':
-                plot_TiO2(self.surface_c, self.surface_e, self.subs, local=False)
-
+                plot_TiO2(self.surface_c, self.surface_e, self.subs, local=False)'''
+        self.surface_c, self.surface_e = load_substrate(r'J:\pythonProject\mrmc\TiO2.xyz', 0)
+        plot_TiO2(self.surface_c, self.surface_e, self.subs, local=False)
+        #filter = tca_filter(self.surface_c, self.surface_e, self.local_c)
+        #self.local_c = self.local_c[filter, :, :]
         self.rep = self.local_c.shape[0]
         self.amountLine.setText('%d / %d' % (self.rep, len(os.listdir(self.folder + r'/result'))))
 
@@ -247,8 +251,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                                    for _ in range(self.local_c.shape[1])]))
             self.select_d = np.reshape(self.select_d, (self.rep, self.local_size))
             self.select_e = np.tile(self.local_e, (self.rep, 1))
+            '''for rep in range(self.rep):
+                self.local_c[rep] = self.local_c[rep][[0, 2, 1], :] - self.local_c[rep][1] + self.surface_c[41]
+            self.local_c = self.local_c[:, :2, :]
+            self.local_e = self.local_e[[0, 2]]
+            self.local_size = self.local_e.size
+            self.select_c, self.select_d, self.select_e, self.adsorb = select_atom(
+                self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath)'''
 
-            print(self.select_c.shape, self.select_d.shape, self.select_e.shape)
+            #print(self.select_c.shape, self.select_d.shape, self.select_e.shape)
+        for i in range(len(self.select_c)):
+            print(self.select_d[i], self.select_e[i])
 
         self.current_rep = np.arange(self.rep)
 
@@ -257,7 +270,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         elif self.surface == 'TiO2':
             self.symbol = np.append(self.local_e[1:], ['O', 'Ti'])
         else:
-            self.symbol = self.local_e[1:].copy()
+            #self.symbol = self.local_e[1:].copy()
+            self.symbol = np.append(self.local_e[1:], ['O', 'Ti'])
         self.symbol = np.unique(self.symbol)
         self.rdf, self.rdf_label = rdf_polarization(self.select_c, self.select_d, self.select_e, self.symbol)
         graph_size = 0
@@ -327,12 +341,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #ax[2].set_xlabel(r'$k[Å^{-1}]$')
         plt.show()'''
 
+        shift_c = self.local_c.copy()
+        if not self.surface == '':
+            for rep in range(self.rep):
+                shift_c[rep] = self.local_c[rep] - self.surface_c[self.adsorb[rep]] + self.surface_c[41]
+        else:
+            for rep in range(self.rep):
+                self.local_c[rep] = self.local_c[rep][[0, 2, 1], :]
+
+
         self.item_r = plot_rotate(self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath, self.surface,
                                   self.rota)
 
-        shift_c = self.local_c.copy()
-        for rep in range(self.rep):
-            shift_c[rep] = self.local_c[rep] - self.surface_c[self.adsorb[rep]] + self.surface_c[45]
+        if self.surface == '':
+            for rep in range(self.rep):
+                shift_c[rep] = self.local_c[rep] - self.local_c[rep][2] + self.surface_c[41]
+            shift_c = shift_c[:, :2, :]
+            self.local_e = self.local_e[[0, 2]]
+            self.local_size = self.local_e.size
+
 
         self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, shift_c, self.rpath, self.subs)
 
@@ -367,6 +394,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.hmax = np.max(self.rdf[self.range_target]) + 0.01
         self.region_line.setRegion([self.hmin, self.hmax])
         self.do.addItem(self.region_line)
+        #self.flush(np.arange(self.rep)[filter], np.arange(self.rep)[np.invert(filter)])
 
         self.region_line.sigRegionChanged.connect(lambda: self.update(False))
         self.rangeMenu.setEnabled(True)
@@ -380,6 +408,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         fig = self.g2dWidget.grab()
         self.widget_dict[self.range_target].addItem(self.region_line)
         fig.save(name[0], 'PNG')
+        fig = self.chiWidget.grab()
+        fig.save(name[0].split('.')[0] + '_chi.png', 'PNG')
         with open(self.folder + r'/rdf.dat', 'w') as f:
             f.write('Simulation folder: %s\n' % self.folder)
             f.write('Selected replicas:\n')
@@ -427,8 +457,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     f.seek(posi)
                     f.write(('replicas_size:%d' % self.current_rep.size).ljust(len(line) - 1) + '\n')
                     break
-        chi_sum =np.zeros(self.exp.size, self.exp[0].k.size)
-        ft_sum = np.zeros(self.exp.size, self.exp[0].r.size)
+        chi_sum = np.zeros((self.exp.size, self.exp[0].k.size))
+        ft_sum = np.zeros((self.exp.size, self.exp[0].r.size))
         for pol in range(self.exp.size):
             for i in self.current_rep:
                 self.chi[pol][i] = self.table[pol][i].chi
@@ -482,6 +512,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         temp_c = temp_c.reshape((self.local_e.size, self.current_rep.size, 3))
                         temp_c = temp_c.transpose(1, 0, 2)
                         fo.write('\n')
+                    else:
+                        temp_c = self.local_c
                     fo.write('[%s local model]\n' % name[_])
                     fo.write('%s %.6f %.6f %.6f\n' % (self.local_e[0], 0, 0, 0))
                     for rep in range(temp_c.shape[0]):

@@ -30,6 +30,7 @@ def read_shell_data():
     print(r1_aver, c21, c31)
     return r1_aver, c21, c31, rdf
 
+
 def read_coordinate():
     group = np.array([])
     for index in range(50):
@@ -133,7 +134,6 @@ def read_chi(f_rep, rep_size, pol_size):
         return np.array([np.asarray(chi_x), np.asarray(chi_y), np.asarray(chi_z)])
 
 
-
 def read_rep(f_rep, choice, local_size):
     rep_size = len(os.listdir(f_rep + r'\result'))
     coor_rep = []
@@ -160,51 +160,61 @@ def read_rep(f_rep, choice, local_size):
 
 
 def load_substrate(f_rep, local_size):
-    with open(f_rep + r'\result\result0.txt', 'r') as f:
+    if not f_rep.find('.') == -1:
+        name = f_rep
+        seq = [1, 2, 3, 0]
+    else:
+        f_rep + r'\result\result0.txt'
+        seq = [0, 1, 2, 4]
+    with open(name, 'r') as f:
         coordinate_substrate = np.array([])
         ele_substrate = np.array([])
         f.readline()
+        if name.split('.')[1] == 'xyz':
+            f.readline()
         while True:
             temp = f.readline()
             if not temp or temp.isspace():
                 break
             temp = temp.split()
             coordinate_substrate = np.append(coordinate_substrate,
-                                             np.array([float(temp[0]), float(temp[1]), float(temp[2])]))
-            ele_substrate = np.append(ele_substrate, temp[4][:-1])
-        coordinate_substrate = coordinate_substrate.reshape(int(coordinate_substrate.size/3), 3)
-    return coordinate_substrate[:-local_size], ele_substrate[:-local_size]
+                                             np.array([float(temp[seq[0]]), float(temp[seq[1]]), float(temp[seq[2]])]))
+            ele_substrate = np.append(ele_substrate, temp[seq[3]][:-1] if seq[3] == 4 else temp[seq[3]])
+        coordinate_substrate = coordinate_substrate.reshape(int(coordinate_substrate.size / 3), 3)
+    surface_size = coordinate_substrate.shape[0] - local_size
+    return coordinate_substrate[:surface_size], ele_substrate[:surface_size]
 
-def tca_filter(coor, ele):
-    y1 = -1.97
+
+def tca_filter(surface_c, surface_e, shift_c):
+    y1 = -1.93
     y2l = -6.45
     rx = 4.95
-    rxl = 5.73
+    rxl = 6.09
     elevation = 65 / 180 * pi
-    center = np.array([-0.34, y1])
-    filtered = np.array([], dtype=int)
+    center = np.array([-0.52, y1])
+    filtered = np.array([False] * shift_c.shape[0])
     index = np.array([], dtype=int)
     coor_rot = np.zeros(2)
-    substrate = coor[0][:-2]
-    for i in range(len(coor)):
+    '''for i in range(len(coor)):
         coordinate = coor[i][-2].copy()
         ne = np.array([], dtype=int)
         for j in range(ele.size - 2):
             if ele[j] == 'O' and sqrt(((coor[i][-2] - substrate[j]) ** 2).sum()) < 2.4:
                 coordinate = np.vstack((coordinate, substrate[j]))
                 ne = np.append(ne, j)
-        k = np.argmin(np.array([sqrt(((coordinate[_] - coor[i][-2]) ** 2).sum()) for _ in range(1, coordinate.shape[0])]))
+        k = np.argmin(
+            np.array([sqrt(((coordinate[_] - coor[i][-2]) ** 2).sum()) for _ in range(1, coordinate.shape[0])]))
         coor[i][-2] -= (substrate[ne[k]] - substrate[45])
-        coor[i][-1] -= (substrate[ne[k]] - substrate[45])
-    for i in range(ele.size):
-        if ele[i] == 'Ti' and (coor[0][i][1] == -13.011 or abs(coor[0][i][1]) == 6.505 or coor[0][i][1] == 0):
+        coor[i][-1] -= (substrate[ne[k]] - substrate[45])'''
+    for i in range(surface_e.size):
+        if surface_e[i] == 'Ti' and (surface_c[i][1] == -13.011 or abs(surface_c[i][1]) == 6.505 or surface_c[i][1] == 0):
             index = np.append(index, i)
-    for i in range(len(coor)):
-        temp = coor[i][-1:].copy()
+    for i in range(shift_c.shape[0]):
+        temp = shift_c[i][1].copy()
         for j in index:
-            #if sqrt(((coor[0][j] - temp[0]) ** 2).sum()) < 7 and sqrt((coor[0][j][1] - temp[0][1]) ** 2) < 3.253:
-            temp = np.vstack((temp, coor[0][j]))
-            temp = np.vstack((temp, coor[0][j] + np.array([11.8, 0, 0])))
+            # if sqrt(((coor[0][j] - temp[0]) ** 2).sum()) < 7 and sqrt((coor[0][j][1] - temp[0][1]) ** 2) < 3.253:
+            temp = np.vstack((temp, surface_c[j]))
+            temp = np.vstack((temp, surface_c[j] + np.array([11.8, 0, 0])))
         temp -= temp[0]
         for j in range(1, temp.shape[0]):
             azi = atan(temp[j][1] / temp[j][0]) if not temp[j][0] == 0 else 0
@@ -216,7 +226,7 @@ def tca_filter(coor, ele):
                 vect = coor_rot - center
                 if rx < sqrt((vect ** 2).sum()) < rxl:
                     if 0 < -atan(vect[1] / vect[0]) < elevation:
-                        filtered = np.append(filtered, i)
+                        filtered[i] = True
                         break
     return filtered
 
@@ -268,7 +278,8 @@ def plot_TiO2(coor, ele, graph, local=False):
                 color = 'red'
         size = 0.6 if ele[i] == 'O' else 0.4
         if local:
-            if abs(coor[i][0] - coor[42][0]) <= 2.95 and abs(coor[i][1] - coor[42][1]) <= 4 and abs(coor[i][2] - coor[42][2]) <= 2.95:
+            if abs(coor[i][0] - coor[42][0]) <= 2.95 and abs(coor[i][1] - coor[42][1]) <= 4 and abs(
+                    coor[i][2] - coor[42][2]) <= 2.95:
                 index = np.append(index, i)
                 graph.addItem(scatter(coor[i][0], coor[i][1], coor[i][2], c=color, scale=size))
         else:
@@ -336,9 +347,9 @@ def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
                                                                       c='black', alpha=1, width=0.05))
             graph.addItem(item_cylinder_rep[-1])
         item_cylinder.append(item_cylinder_rep)
-    #item_scatter = item_scatter.reshape(local_c.shape[0], local_c.shape[1])
-        # graph.addItem(cylinder([rep[0][0], rep[1][0]], [rep[0][1], rep[1][1]],
-        # [rep[0][2], rep[1][2]], c='red', width=0.05))
+    # item_scatter = item_scatter.reshape(local_c.shape[0], local_c.shape[1])
+    # graph.addItem(cylinder([rep[0][0], rep[1][0]], [rep[0][1], rep[1][1]],
+    # [rep[0][2], rep[1][2]], c='red', width=0.05))
     return item_scatter, item_cylinder
 
 
@@ -363,7 +374,7 @@ def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
             stat_e[locate] = np.append(stat_e[locate], round(acos(coor[rep][i][2] / dist[rep][i]) / pi * 180, 0))
             stat_d[locate] = np.append(stat_d[locate], round(dist[rep][i], 2))
 
-        #bond_angle = np.append(bond_angle, 180 - cal_angle(coor[i][1], coor[i][0], coor[i][2]))
+        # bond_angle = np.append(bond_angle, 180 - cal_angle(coor[i][1], coor[i][0], coor[i][2]))
     rdf = [stat_d[0], stat_a[0], stat_e[0]]
     for i in range(1, size):
         rdf.append(stat_d[i])
@@ -390,8 +401,8 @@ def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
 
 
 def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph):
-    color = ['brown', 'yellow', 'green', 'orange', 'cyan', 'red', 'purple']
-    #color = ['blue', 'yellow', 'red', 'red', 'red', 'red', 'red']
+    color = ['brown', 'yellow', 'purple', 'green', 'orange', 'cyan', 'red']
+    # color = ['blue', 'yellow', 'red', 'red', 'red', 'red', 'red']
     graph.addItem(scatter(0, 0, 0, c=color[0], scale=0.3))
     graph.addItem(line([-3, 3], [0, 0], [0, 0], c='r'))
     graph.addItem(line([0, 0], [-3, 3], [0, 0], c='g'))
@@ -403,22 +414,23 @@ def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph):
             temp = local_c[i][j] - local_c[i][0]
             item_rep = np.append(item_rep, scatter(temp[0], temp[1], temp[2], c=color[j], scale=0.3))
             graph.addItem(item_rep[-1])
-        for j in range(surface_e.size):
-            if sqrt(((surface_c[j] - local_c[i][0]) ** 2).sum()) < rpath:
-                temp = surface_c[j] - local_c[i][0]
-                if surface_e[j] == 'O':
-                    c = 'purple' if surface == 'TiO2' and surface_c[j][2] > 0 else 'red'
-                else:
-                    if surface_e[j] == 'Al':
-                        if surface_c[j][2] < 0:
-                            c = 'dimgray'
-                        elif surface_c[j][2] == 0:
-                            c = 'darkgray'
-                        else:
-                            c = 'lightgray'
+        if not surface == '':
+            for j in range(surface_e.size):
+                if sqrt(((surface_c[j] - local_c[i][0]) ** 2).sum()) < rpath:
+                    temp = surface_c[j] - local_c[i][0]
+                    if surface_e[j] == 'O':
+                        c = 'purple' if surface == 'TiO2' and surface_c[j][2] > 0 else 'red'
                     else:
-                        c = 'silver'
-                item_rep = np.append(item_rep, scatter(temp[0], temp[1], temp[2], c=c, scale=0.3))
-                graph.addItem(item_rep[-1])
+                        if surface_e[j] == 'Al':
+                            if surface_c[j][2] < 0:
+                                c = 'dimgray'
+                            elif surface_c[j][2] == 0:
+                                c = 'darkgray'
+                            else:
+                                c = 'lightgray'
+                        else:
+                            c = 'silver'
+                    item_rep = np.append(item_rep, scatter(temp[0], temp[1], temp[2], c=c, scale=0.3))
+                    graph.addItem(item_rep[-1])
         item_list.append(item_rep)
     return item_list
