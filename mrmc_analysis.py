@@ -36,6 +36,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.rota.customContextMenuRequested.connect(self.save_3d_menu)
 
 
+
         self.plotx = pg.PlotWidget(background=(255, 255, 255, 255))
         self.plotx.setTitle('χ(k) [001]', color='#000000', size='20pt')
         self.plotx.setLabel('left', 'χ(k)')
@@ -133,27 +134,33 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.exp = np.array([], dtype=EXP)
 
-    def load_exp(self, file_list):
-        self.exp_name = np.asarray(file_list)
-        if self.exp_name.size == 1:
+        self.surface = ''
+        self.rpath = 3
+        self.fit_space = 'k'
+        self.local_c, self.local_e = np.array([]), np.array([])
+        self.surface_c, self.surface_e = np.array([]), np.array([])
+        self.select_c, self.select_e = np.array([]), np.array([])
+        self.rep = self.local_c.shape[0]
+        self.current_rep = np.arange(self.rep)
+
+
+    def load_exp(self, file_list, k, r):
+        exp_name = np.asarray(file_list)
+        self.exp = np.array([EXP(exp_name[i], k[0], k[1], r[0], r[1]) for i in range(exp_name.size)])
+        if exp_name.size == 1:
             self.plotx.setTitle('χ(k)', color='#000000', size='20pt')
             self.ploty.setTitle('', color='#000000', size='20pt')
             self.plotz.setTitle('', color='#000000', size='20pt')
-        elif self.exp_name.size == 2:
+        elif exp_name.size == 2:
             self.plotx.setTitle('χ(k)-s', color='#000000', size='20pt')
             self.ploty.setTitle('χ(k)-p', color='#000000', size='20pt')
             self.plotz.setTitle('', color='#000000', size='20pt')
-        elif self.exp_name.size == 3:
+        elif exp_name.size == 3:
             self.plotx.setTitle('χ(k) [001]', color='#000000', size='20pt')
             self.ploty.setTitle('χ(k) [1-10]', color='#000000', size='20pt')
             self.plotz.setTitle('χ(k) [110]', color='#000000', size='20pt')
 
-    def read(self):
-        address = self.folder.split(self.folder.split('/')[-1])[0] if not self.folder == '' \
-            else r'D/CuAlO'#r'C:/Monte Carlo/cuos/substrate'
-        folder = QFileDialog.getExistingDirectory(self, 'select folder...', address)
-        if folder == '':
-            return
+    def clear(self):
         if not self.folder == '':
             self.subs.clear()
             self.rota.clear()
@@ -163,7 +170,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.plotz.clear()
             for i in range(9):
                 self.widget_dict[i].clear()
-        self.folder = folder
+
+    def load_info(self):
         with open(self.folder + r'\info.txt', 'r') as f:
             self.local_e = np.array([f.readline().split()[1]])
             self.local_e = np.append(self.local_e, f.readline().split()[1:])
@@ -175,25 +183,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             k = [float(_) for _ in f.readline().split()[1:]]
             r = [float(_) for _ in f.readline().split()[1:]]
             print(k, r)
-        self.local_c, flag = read_rep(self.folder, self.choice_window(), self.local_size)
-        if flag:
-            self.statusbar.showMessage('No result file found', 3000)
-            self.folder = ''
-            return
-        '''if not self.surface == '':
-            self.surface_c, self.surface_e = load_substrate(self.folder, self.local_size)
-            if self.surface == 'Al2O3':
-                plot_Al2O3(self.surface_c, self.surface_e, self.subs)
-            elif self.surface == 'TiO2':
-                plot_TiO2(self.surface_c, self.surface_e, self.subs, local=False)'''
-        self.surface_c, self.surface_e = load_substrate(r'J:\pythonProject\mrmc\TiO2.xyz', 0)
-        plot_TiO2(self.surface_c, self.surface_e, self.subs, local=False)
-        #filter = tca_filter(self.surface_c, self.surface_e, self.local_c)
-        #self.local_c = self.local_c[filter, :, :]
-        self.rep = self.local_c.shape[0]
-        self.amountLine.setText('%d / %d' % (self.rep, len(os.listdir(self.folder + r'/result'))))
+        return k, r, dE
 
-        with open(self.folder + r'/mrmc.inp', 'r') as f:
+    def load_inp(self, k, r):
+        with (open(self.folder + r'/mrmc.inp', 'r') as f):
             f.readline()
             exp_path = np.array([])
             for i in range(3):
@@ -205,12 +198,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if not temp or len(temp.split()) == 0:
                     break
                 exp_path = np.append(exp_path, temp.split('\n')[0])
-            self.load_exp(exp_path)
+            self.load_exp(exp_path, k, r)
             while True:
                 lines = f.readline()
                 if not lines.find('weight') == -1:
                     break
             weight = int(lines.split(':')[1])
+
+            while True:
+                lines = f.readline()
+                if not lines.find('surface:') == -1:
+                    break
+            temp = lines.split('surface:')[1].strip()
+            self.surface = temp.split(' ')[0]
+            surface_file = temp[len(self.surface):].strip()
+
+            while True:
+                lines = f.readline()
+                if not lines.find('surface_range') == -1:
+                    break
+            temp = lines.split(':')[1].strip()
+            surface_range = np.array([float(_) for _ in temp.split()]) if not len(temp) == 0 else np.array([])
+
             while True:
                 lines = f.readline()
                 if not lines.find('S0') == -1:
@@ -219,7 +228,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             sig2 = float(f.readline().split(':')[1])
             for i in range(3):
                 f.readline()
-            self.rpath = float(f.readline().split(':')[1])
+            if not len(self.surface) == 0:
+                self.rpath = np.array([float(_) for _ in f.readline().split(':')[1].strip().split()])
+            else:
+                f.readline()
+                self.rpath = np.array([])
             temp = f.readline().split(':')[1].strip()
             if temp == 'True' or temp == 'true' or temp == '1':
                 ms = True
@@ -240,10 +253,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if not lines.find('material_folder') == -1:
                     break
             f_material = lines.split(lines.split(':')[0] + ':')[1].split('\n')[0].strip()
+            return weight, s0, sig2, ms, f_material, surface_file, surface_range
+
+    def load_rep(self):
+        self.local_c, flag = read_rep(self.folder, self.choice_window(), self.local_size)
+        if flag:
+            self.statusbar.showMessage('No result file found', 3000)
+            self.folder = ''
+            return
+        self.rep = self.local_c.shape[0]
+        self.current_rep = np.arange(self.rep)
+        # filter = tca_filter(self.surface_c, self.surface_e, self.local_c)
+        # self.local_c = self.local_c[filter, :, :]
+        self.amountLine.setText('%d / %d' % (self.rep, len(os.listdir(self.folder + r'/result'))))
+
+    def load_atom(self):
         if not self.surface == '':
+            self.surface_c, self.surface_e = load_substrate(self.folder, self.local_size)
+            if self.surface == 'Al2O3':
+                plot_Al2O3(self.surface_c, self.surface_e, self.subs)
+                self.symbol = ['O', 'Al']
+            elif self.surface == 'TiO2':
+                plot_TiO2(self.surface_c, self.surface_e, self.subs, local=False)
+                self.symbol = ['O', 'Ti']
             self.select_c, self.select_d, self.select_e, self.adsorb = select_atom(
-                self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath)
+                self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath, self.symbol)
+            self.symbol = np.unique(np.append(self.local_e[1:], self.symbol))
         else:
+            self.symbol = np.unique(np.append(self.local_e[1:], ['O', 'Ti']))
             self.select_c = self.local_c.copy()
             self.select_d = np.array([])
             for i in range(self.local_c.shape[0]):
@@ -258,21 +295,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.local_size = self.local_e.size
             self.select_c, self.select_d, self.select_e, self.adsorb = select_atom(
                 self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath)'''
-
-            #print(self.select_c.shape, self.select_d.shape, self.select_e.shape)
         for i in range(len(self.select_c)):
-            print(self.select_d[i], self.select_e[i])
+            #print(self.select_d[i], self.select_e[i])
+            print(sqrt(((self.select_c[i][2] - self.select_c[i][3])**2).sum()))
 
-        self.current_rep = np.arange(self.rep)
+    def cal_spectrum(self, folder_material, sig2, dE, s0, ms, weight):
+        self.table = np.zeros((self.exp.size, self.rep), dtype=TABLE_POL)
+        pol = np.arange(3) if self.exp.size == 3 else (np.arange(2) + 2)
+        for i in range(self.exp.size):
+            for j in range(self.rep):
+                self.table[i][j] = TABLE_POL(self.exp[i].k_start, self.exp[i].k_end, self.exp[i].r_start,
+                                             self.exp[i].r_end, sig2, dE, s0, self.exp[i].k0, self.select_c[j],
+                                             self.select_e[j], folder_material, pol[i], ms_en=ms, weight=weight)
+        chi_sum = np.zeros((self.exp.size, self.exp[0].k.size))
+        self.chi = np.zeros((self.exp.size, self.rep, self.exp[0].k.size))
+        for pol in range(self.exp.size):
+            for i in range(self.rep):
+                self.chi[pol][i] = self.table[pol][i].chi
+                if self.fit_space == 'k':
+                    chi_sum[pol] += self.table[pol][i].chi
+                elif self.fit_space == 'r':
+                    chi_sum[pol] += self.table[pol][i].ft
+                else:
+                    chi_sum[pol] += self.table[pol][i].chi * np.transpose([self.table[pol][i].ft[self.exp[pol].r_range]])
+            chi_sum[pol] /= self.rep
+            print(self.exp[pol].r_factor_chi(chi_sum[pol]))
+        return chi_sum
 
-        if self.surface == 'Al2O3':
-            self.symbol = np.append(self.local_e[1:], ['O', 'Al'])
-        elif self.surface == 'TiO2':
-            self.symbol = np.append(self.local_e[1:], ['O', 'Ti'])
-        else:
-            #self.symbol = self.local_e[1:].copy()
-            self.symbol = np.append(self.local_e[1:], ['O', 'Ti'])
-        self.symbol = np.unique(self.symbol)
+    def cal_rdf(self):
         self.rdf, self.rdf_label = rdf_polarization(self.select_c, self.select_d, self.select_e, self.symbol)
         graph_size = 0
         for i in self.rdf:
@@ -291,7 +341,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.widget_dict[i].setXRange(np.min(urdf[i][0]) - 0.01, np.max(urdf[i][0]) + 0.01)
             else:
                 self.widget_dict[i].setLabel('bottom', 'angle', unit='°')
-        for i in range(graph_size//3):
+        for i in range(graph_size // 3):
             self.widget_dict[i * 3].setTitle('R (%s-%s)' % (self.local_e[0], self.symbol[i]),
                                              color='#000000', size='20pt')
             self.widget_dict[i * 3 + 1].setTitle('φ (%s-%s)' % (self.local_e[0], self.symbol[i]),
@@ -299,81 +349,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.widget_dict[i * 3 + 2].setTitle('θ (%s-%s)' % (self.local_e[0], self.symbol[i]),
                                                  color='#000000', size='20pt')
         self.do.plotItem.enableAutoRange(axis='x', enable=False)
-        self.exp = np.array([EXP(self.exp_name[i], k[0], k[1], r[0], r[1]) for i in range(self.exp_name.size)])
 
-        self.table = np.zeros((self.exp.size, self.rep), dtype=TABLE_POL)
-        f_material = r'J:\Monte Carlo\cutio2'
-        pol = np.arange(3) if self.exp.size == 3 else (np.arange(2) + 2)
-        for i in range(self.exp.size):
-            for j in range(self.rep):
-                self.table[i][j] = TABLE_POL(self.exp[i].k_start, self.exp[i].k_end, self.exp[i].r_start,
-                                             self.exp[i].r_end, sig2, dE, s0, self.exp[i].k0, self.select_c[j],
-                                             self.select_e[j], f_material, pol[i], ms_en=ms, weight=weight)
-        chi_sum = np.zeros((self.exp.size, self.exp[0].k.size))
-        ft_sum = np.zeros((self.exp.size, self.exp[0].r.size))
-        #ax = np.array([plt.subplot(3, 1, _ + 1) for _ in range(3)])
-        #direct = ['[001]', '[1-10]', '[110]']
-        self.chi = np.zeros((self.exp.size, self.rep, self.exp[0].k.size))
-        for pol in range(self.exp.size):
-            for i in range(self.rep):
-                self.chi[pol][i] = self.table[pol][i].chi
-                chi_sum[pol] += self.table[pol][i].chi
-                ft_sum[pol] += self.table[pol][i].ft
-            chi_sum[pol] /= self.rep
-            ft_sum[pol] /= self.rep
-            print(self.exp[pol].r_factor_chi(chi_sum[pol]))
-        cross_sum = np.array(
-                [chi_sum[_] * np.transpose([ft_sum[_][self.exp[_].r_range]]) for _ in range(self.exp.size)])
-        #ax = np.array([plt.subplot(1, self.exp.size, pol+1, projection='3d') for pol in range(self.exp.size)])
-        '''pol = 0
-        ax = plt.subplot(projection='3d')
-        x, y  = np.
-        for i in range(self.exp[pol].r_range.size):
-            ax.plot(self.exp[pol].k, cross_sum[pol][i], zs=self.exp[pol].r_cut[i], zdir='y', c='r')
-            ax.plot(self.exp[pol].k, self.exp[pol].cross[i], zs=self.exp[pol].r_cut[i], zdir='y', c='k')
-            ax.contourf(self.exp[pol].r_cut, cross_sum[pol], self.exp[pol].k)
-            ax.contourf(self.exp[pol].k, self.exp[pol].r_cut, cross_sum[pol])
-            #ax[pol].plot(self.exp[pol].r, self.exp[pol].ft, c='k', label='expe %s'%direct[pol])
-            #ax[pol].plot(self.exp[pol].r, np.abs(norm_fft(chi_sum[pol], self.exp[pol].r.size)), c='r', label='average %s'%direct[pol])
-            #ax[pol].plot(self.exp[pol].k, chi_sum[pol], c='r', label='average %s' % direct[pol])
-            #ax[pol].legend(loc='lower right')
-            #ax[pol].set_ylabel('χ %s'%direct[pol])
-        #ax[2].set_xlabel(r'$k[Å^{-1}]$')
-        plt.show()'''
-
-        shift_c = self.local_c.copy()
-        if not self.surface == '':
-            for rep in range(self.rep):
-                shift_c[rep] = self.local_c[rep] - self.surface_c[self.adsorb[rep]] + self.surface_c[41]
-        else:
-            for rep in range(self.rep):
-                self.local_c[rep] = self.local_c[rep][[0, 2, 1], :]
-
-
-        self.item_r = plot_rotate(self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath, self.surface,
-                                  self.rota)
-
-        if self.surface == '':
-            for rep in range(self.rep):
-                shift_c[rep] = self.local_c[rep] - self.local_c[rep][2] + self.surface_c[41]
-            shift_c = shift_c[:, :2, :]
-            self.local_e = self.local_e[[0, 2]]
-            self.local_size = self.local_e.size
-
-
-        self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, shift_c, self.rpath, self.subs)
-
+    def set_plot(self, chi_sum):
         self.line_exp = np.array([line(x=self.exp[_].k, y=self.exp[_].chi, c='black', width=3)
                                   for _ in range(self.exp.size)])
-        #self.chi = read_chi(self.folder, self.rep, self.exp.size)
         self.line_chi = np.zeros((self.exp.size, self.rep), dtype=pg.PlotDataItem)
         for i in range(self.exp.size):
             self.widget_plot[i].addItem(self.line_exp[i])
             for j in range(self.rep):
                 self.line_chi[i][j] = line(x=self.exp[0].k, y=self.table[i][j].chi, c='red', alpha=0.3)
                 self.widget_plot[i].addItem(self.line_chi[i][j])
-        self.r_factor = np.zeros(self.rep)
 
+        self.r_factor = np.zeros(self.rep)
         for i in range(self.rep):
             for j in range(self.exp.size):
                 self.r_factor[i] += self.exp[j].r_factor_chi(self.table[j][i].chi)
@@ -394,10 +381,52 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.hmax = np.max(self.rdf[self.range_target]) + 0.01
         self.region_line.setRegion([self.hmin, self.hmax])
         self.do.addItem(self.region_line)
-        #self.flush(np.arange(self.rep)[filter], np.arange(self.rep)[np.invert(filter)])
+        # self.flush(np.arange(self.rep)[filter], np.arange(self.rep)[np.invert(filter)])
 
         self.region_line.sigRegionChanged.connect(lambda: self.update(False))
         self.rangeMenu.setEnabled(True)
+
+    def read(self):
+        address = self.folder.split(self.folder.split('/')[-1])[0] if not self.folder == '' \
+            else r'D:/CuAlO'#r'C:/Monte Carlo/cuos/substrate'
+        folder = QFileDialog.getExistingDirectory(self, 'select folder...', address)
+        if folder == '':
+            return
+
+        self.clear()
+        self.folder = folder
+        k, r, dE = self.load_info()
+        weight, s0, sig2, ms, f_material, surface_file, surface_range = self.load_inp(k, r)
+        self.load_rep()
+        self.load_atom()
+        chi_sum = self.cal_spectrum(f_material, sig2, dE, s0, ms, weight)
+        self.cal_rdf()
+
+
+        '''shift_c = self.local_c.copy()
+        if not self.surface == '':
+            for rep in range(self.rep):
+                shift_c[rep] = self.local_c[rep] - self.surface_c[self.adsorb[rep]] + self.surface_c[41]
+        else:
+            for rep in range(self.rep):
+                self.local_c[rep] = self.local_c[rep][[0, 2, 1], :]'''
+
+
+        self.item_r = plot_rotate(self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath, self.surface,
+                                  self.rota)
+
+        '''if self.surface == '':
+            for rep in range(self.rep):
+                shift_c[rep] = self.local_c[rep] - self.local_c[rep][2] + self.surface_c[41]
+            shift_c = shift_c[:, :2, :]
+            self.local_e = self.local_e[[0, 2]]
+            self.local_size = self.local_e.size'''
+
+        if not self.surface == '':
+            self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, self.local_c, self.rpath, self.subs)
+
+        self.set_plot(chi_sum)
+
 
     def save(self):
         address = self.folder if not self.folder == '' else os.getcwd()
@@ -585,10 +614,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if np.where(self.current_rep == i)[0].size > 0 and np.where(rep_remove == i)[0].size > 0\
                     and np.where(self.rf_rep == i)[0].size > 0:
                 flag = True
-                for j in range(self.local_size):
-                    self.subs.removeItem(self.item_s[i * self.local_size + j])
-                for j in range(self.item_c[i].size):
-                    self.subs.removeItem(self.item_c[i][j])
+                if not self.surface == '':
+                    for j in range(self.local_size):
+                        self.subs.removeItem(self.item_s[i * self.local_size + j])
+                    for j in range(self.item_c[i].size):
+                        self.subs.removeItem(self.item_c[i][j])
                 for j in range(self.item_r[i].size):
                     self.rota.removeItem(self.item_r[i][j])
                 for pol in range(self.exp.size):
@@ -597,10 +627,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             elif np.where(self.current_rep == i)[0].size == 0 and np.where(rep_add == i)[0].size > 0\
                     and np.where(self.rf_rep == i)[0].size > 0:
                 flag = True
-                self.subs.addItem(self.item_s[i * self.local_size])
-                self.subs.addItem(self.item_s[i * self.local_size + 1])
-                for j in range(self.item_c[i].size):
-                    self.subs.addItem(self.item_c[i][j])
+                if not self.surface == '':
+                    self.subs.addItem(self.item_s[i * self.local_size])
+                    self.subs.addItem(self.item_s[i * self.local_size + 1])
+                    for j in range(self.item_c[i].size):
+                        self.subs.addItem(self.item_c[i][j])
                 for j in range(self.item_r[i].size):
                     self.rota.addItem(self.item_r[i][j])
                 for pol in range(self.exp.size):
@@ -673,7 +704,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return 'Best'
         else:
             return 'final'
-
 
 
 if __name__ == '__main__':

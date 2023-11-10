@@ -181,6 +181,7 @@ def load_substrate(f_rep, local_size):
                                              np.array([float(temp[seq[0]]), float(temp[seq[1]]), float(temp[seq[2]])]))
             ele_substrate = np.append(ele_substrate, temp[seq[3]][:-1] if seq[3] == 4 else temp[seq[3]])
         coordinate_substrate = coordinate_substrate.reshape(int(coordinate_substrate.size / 3), 3)
+
     surface_size = coordinate_substrate.shape[0] - local_size
     return coordinate_substrate[:surface_size], ele_substrate[:surface_size]
 
@@ -231,7 +232,7 @@ def tca_filter(surface_c, surface_e, shift_c):
     return filtered
 
 
-def select_atom(surface_c, surface_e, local_c, local_e, rpath):
+def select_atom(surface_c, surface_e, local_c, local_e, rpath, symbol):
     coordinate = []
     dist = []
     element = []
@@ -241,7 +242,7 @@ def select_atom(surface_c, surface_e, local_c, local_e, rpath):
         temp_ele = local_e.copy()
         temp_index = np.array([], dtype=int)
         for j in range(surface_e.size):
-            if sqrt(((surface_c[j] - temp[0]) ** 2).sum()) < rpath:
+            if sqrt(((surface_c[j] - temp[0]) ** 2).sum()) < rpath[np.where(symbol == surface_e[j])[0][0]]:
                 temp = np.vstack((temp, surface_c[j]))
                 temp_ele = np.append(temp_ele, surface_e[j])
                 temp_index = np.append(temp_index, j)
@@ -324,8 +325,9 @@ def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
     for i in range(local_c.shape[0]):
         for j in range(local_c.shape[1]):
             item_scatter = np.append(item_scatter, scatter(local_c[i][j][0], local_c[i][j][1],
-                                                           local_c[i][j][2], c=color[j], scale=0.3))
-            graph.addItem(item_scatter[-1])
+                                                           local_c[i][j][2], c=color[j], alpha=1, scale=0.3))
+            if j == 0:
+                graph.addItem(item_scatter[-1])
 
         item_cylinder_rep = np.array([])
         dist = np.array([])
@@ -339,13 +341,13 @@ def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
                                                                   [local_c[i][0][1], surface_c[nearest][1]],
                                                                   [local_c[i][0][2], surface_c[nearest][2]],
                                                                   c='black', alpha=1, width=0.05))
-        graph.addItem(item_cylinder_rep[-1])
+        #graph.addItem(item_cylinder_rep[-1])
         for j in range(1, local_c.shape[1]):
             item_cylinder_rep = np.append(item_cylinder_rep, cylinder([local_c[i][0][0], local_c[i][j][0]],
                                                                       [local_c[i][0][1], local_c[i][j][1]],
                                                                       [local_c[i][0][2], local_c[i][j][2]],
                                                                       c='black', alpha=1, width=0.05))
-            graph.addItem(item_cylinder_rep[-1])
+            #graph.addItem(item_cylinder_rep[-1])
         item_cylinder.append(item_cylinder_rep)
     # item_scatter = item_scatter.reshape(local_c.shape[0], local_c.shape[1])
     # graph.addItem(cylinder([rep[0][0], rep[1][0]], [rep[0][1], rep[1][1]],
