@@ -1077,16 +1077,34 @@
    </property>
   </action>
   <action name="d_tiAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>distance3</string>
    </property>
   </action>
   <action name="a_tiAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>azimuth3</string>
    </property>
   </action>
   <action name="e_tiAction">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>elevation3</string>
    </property>

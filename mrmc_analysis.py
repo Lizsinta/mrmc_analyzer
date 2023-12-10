@@ -135,7 +135,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.exp = np.array([], dtype=EXP)
 
         self.surface = ''
-        self.rpath = 3
+        self.rpath = {}
         self.fit_space = 'k'
         self.local_c, self.local_e = np.array([]), np.array([])
         self.surface_c, self.surface_e = np.array([]), np.array([])
@@ -178,8 +178,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.local_size = self.local_e.size
             temp = f.readline().split()
             self.surface = temp[1] if len(temp) > 1 else ''
-            dE = [float(_) for _ in f.readline().split()[1:]]
-            dE.append(13)
+            temp = f.readline().split()[1:]
+            if temp[0].find('=') == -1:
+                dE = {i:float(j) for i, j in zip(np.unique(self.local_e[1:]), temp)}
+            else:
+                dE = {_[0]:float(_[1]) for _ in np.char.split(np.asarray(temp, dtype=str), '=')}
             k = [float(_) for _ in f.readline().split()[1:]]
             r = [float(_) for _ in f.readline().split()[1:]]
             print(k, r)
@@ -212,6 +215,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             temp = lines.split('surface:')[1].strip()
             self.surface = temp.split(' ')[0]
             surface_file = temp[len(self.surface):].strip()
+            if self.surface == 'TiO2':
+                self.symbol = np.array(['O', 'Ti'])
+            elif self.surface == 'Al2O3':
+                self.symbol = np.array(['O', 'Al'])
 
             while True:
                 lines = f.readline()
@@ -229,10 +236,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             for i in range(3):
                 f.readline()
             if not len(self.surface) == 0:
-                self.rpath = np.array([float(_) for _ in f.readline().split(':')[1].strip().split()])
+                temp = f.readline().split(':')[1]
+                if temp.find('=') == -1:
+                    rpath = np.array([float(_) for _ in temp.strip().split()])
+                    self.rpath ={self.symbol[i]:rpath[i] for i in range(rpath.size)}
+                else:
+                    self.rpath = {_[0]:float(_[1]) for _ in np.char.split(np.asarray(temp.strip().split(), dtype=str), '=')}
             else:
                 f.readline()
-                self.rpath = np.array([])
+                self.rpath = {}
             temp = f.readline().split(':')[1].strip()
             if temp == 'True' or temp == 'true' or temp == '1':
                 ms = True
@@ -272,12 +284,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.surface_c, self.surface_e = load_substrate(self.folder, self.local_size)
             if self.surface == 'Al2O3':
                 plot_Al2O3(self.surface_c, self.surface_e, self.subs)
-                self.symbol = ['O', 'Al']
             elif self.surface == 'TiO2':
                 plot_TiO2(self.surface_c, self.surface_e, self.subs, local=False)
-                self.symbol = ['O', 'Ti']
             self.select_c, self.select_d, self.select_e, self.adsorb = select_atom(
-                self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath, self.symbol)
+                self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath)
             self.symbol = np.unique(np.append(self.local_e[1:], self.symbol))
         else:
             self.symbol = np.unique(np.append(self.local_e[1:], ['O', 'Ti']))
@@ -295,9 +305,103 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.local_size = self.local_e.size
             self.select_c, self.select_d, self.select_e, self.adsorb = select_atom(
                 self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath)'''
+        '''short = np.array([])
+        long = np.array([])
+        sa = np.array([])
+        la = np.array([])
+        se = np.array([])
+        le = np.array([])
+        si = []
+        li = []
+        sulf = []
+        sud = np.array([])
+        sua = np.array([])
+        sue = np.array([])
         for i in range(len(self.select_c)):
-            #print(self.select_d[i], self.select_e[i])
-            print(sqrt(((self.select_c[i][2] - self.select_c[i][3])**2).sum()))
+            if self.select_d[i][1] < 2.3 and self.select_d[i][2] < 2 and self.select_d[i][3] < 2:
+                sulf.append(self.select_c[i][1])
+                if not self.select_c[i][1][0] == 0:
+                    azi1 = round(atan(self.select_c[i][1][1] / self.select_c[i][1][0]) / pi * 180, 0)
+                    azi1 = azi1 if azi1 < 90 else 180 - azi1
+                else:
+                    azi1 = 90
+                sud = np.append(sud, self.select_d[i][1])
+                sua = np.append(sua, azi1)
+                sue = np.append(sue, round(acos(self.select_c[i][1][2] / self.select_d[i][1]) / pi * 180, 0))
+                if not self.select_c[i][2][0] == 0:
+                    azi2 = round(atan(self.select_c[i][2][1] / self.select_c[i][2][0]) / pi * 180, 0)
+                    azi2 = azi2 if azi2 < 90 else 180 - azi2
+                else:
+                    azi2 = 90
+                if not self.select_c[i][3][0] == 0:
+                    azi3 = round(atan(self.select_c[i][3][1] / self.select_c[i][3][0]) / pi * 180, 0)
+                    azi3 = azi3 if azi3 < 90 else 180 - azi3
+                else:
+                    azi3 = 90
+                if self.select_d[i][2] > self.select_d[i][3]:
+                    si.append(self.select_c[i][3])
+                    li.append(self.select_c[i][2])
+                    short = np.append(short, self.select_d[i][3])
+                    long = np.append(long, self.select_d[i][2])
+                    sa = np.append(sa, azi3)
+                    la = np.append(la, azi2)
+                    se = np.append(se, round(acos(self.select_c[i][3][2] / self.select_d[i][3]) / pi * 180, 0))
+                    le = np.append(le, round(acos(self.select_c[i][2][2] / self.select_d[i][2]) / pi * 180, 0))
+                else:
+                    si.append(self.select_c[i][2])
+                    li.append(self.select_c[i][3])
+                    short = np.append(short, self.select_d[i][2])
+                    long = np.append(long, self.select_d[i][3])
+                    sa = np.append(sa, azi2)
+                    la = np.append(la, azi3)
+                    se = np.append(se, round(acos(self.select_c[i][2][2] / self.select_d[i][3]) / pi * 180, 0))
+                    le = np.append(le, round(acos(self.select_c[i][3][2] / self.select_d[i][2]) / pi * 180, 0))
+        si = np.asarray(si)
+        li = np.asarray(li)
+        sulf = np.asarray(sulf)
+        print(short.size, short.mean(), short.var(), long.mean(), long.var(), sud.mean(), sud.var())
+        print(short.size, sa.mean(), sa.var(), la.mean(), la.var(), sua.mean(), sua.var())
+        print(short.size, se.mean(), se.var(), le.mean(), le.var(), sue.mean(), sue.var())
+        print(si.mean(0))
+        print(li.mean(0))
+        print(sulf.mean(0))
+        dshort = np.unique(np.round(short, 2), return_counts=True)
+        dlong = np.unique(np.round(long, 2), return_counts=True)
+        dsa = np.unique(np.round(sa, 0), return_counts=True)
+        dla = np.unique(np.round(la, 0), return_counts=True)
+        dse = np.unique(np.round(se, 0), return_counts=True)
+        dle = np.unique(np.round(le, 0), return_counts=True)
+        dsud = np.unique(np.round(sud, 2), return_counts=True)
+        dsua = np.unique(np.round(sua, 0), return_counts=True)
+        dsue = np.unique(np.round(sue, 0), return_counts=True)
+        plt.subplot(331)
+        plt.bar(dshort[0], dshort[1], width=0.005)
+        plt.title('%.3f-%.5f' % (short.mean(), short.std()))
+        plt.subplot(332)
+        plt.bar(dsa[0], dsa[1], width=0.5)
+        plt.title('%.1f-%.3f' % (sa.mean(), sa.std()))
+        plt.subplot(333)
+        plt.bar(dse[0], dse[1], width=0.5)
+        plt.title('%.1f-%.3f' % (se.mean(), se.std()))
+        plt.subplot(334)
+        plt.bar(dlong[0], dlong[1], width=0.005)
+        plt.title('%.3f-%.5f' % (long.mean(), long.std()))
+        plt.subplot(335)
+        plt.bar(dla[0], dla[1], width=0.5)
+        plt.title('%.1f-%.3f' % (la.mean(), la.std()))
+        plt.subplot(336)
+        plt.bar(dle[0], dle[1], width=0.5)
+        plt.title('%.1f-%.3f' % (le.mean(), le.std()))
+        plt.subplot(337)
+        plt.bar(dsud[0], dsud[1], width=0.005)
+        plt.title('%.3f-%.5f' % (sud.mean(), sud.std()))
+        plt.subplot(338)
+        plt.bar(dsua[0], dsua[1], width=0.5)
+        plt.title('%.1f-%.3f' % (sua.mean(), sua.std()))
+        plt.subplot(339)
+        plt.bar(dsue[0], dsue[1], width=0.5)
+        plt.title('%.1f-%.3f' % (sue.mean(), sue.std()))
+        plt.show()'''
 
     def cal_spectrum(self, folder_material, sig2, dE, s0, ms, weight):
         self.table = np.zeros((self.exp.size, self.rep), dtype=TABLE_POL)
@@ -330,9 +434,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 graph_size += 1
         urdf = [np.unique(self.rdf[_], return_counts=True) for _ in range(graph_size)]
         self.bar_spher = [bar(urdf[_][0], urdf[_][1], width=0.5) for _ in range(graph_size)]
+        third_ele = True if graph_size > 6 else False
+        for i in range(6, 9):
+            self.action_dict[i].setEnabled(third_ele)
         for i in range(graph_size):
-            if i < 6:
-                self.info_dict[i].setText('%.2f-%.2f' % (self.rdf[i].mean(), self.rdf[i].std()))
+            self.info_dict[i].setText('%.2f-%.2f' % (self.rdf[i].mean(), self.rdf[i].std()))
             self.widget_dict[i].addItem(self.bar_spher[i])
             self.widget_dict[i].setLabel('left', 'count')
             if i == 0 or i == 3 or i == 6:
@@ -426,6 +532,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, self.local_c, self.rpath, self.subs)
 
         self.set_plot(chi_sum)
+        self.setWindowTitle('mRMC (%s)' % self.folder)
 
 
     def save(self):
@@ -617,8 +724,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if not self.surface == '':
                     for j in range(self.local_size):
                         self.subs.removeItem(self.item_s[i * self.local_size + j])
-                    for j in range(self.item_c[i].size):
-                        self.subs.removeItem(self.item_c[i][j])
+                    '''for j in range(self.item_c[i].size):
+                        self.subs.removeItem(self.item_c[i][j])'''
                 for j in range(self.item_r[i].size):
                     self.rota.removeItem(self.item_r[i][j])
                 for pol in range(self.exp.size):
@@ -628,10 +735,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     and np.where(self.rf_rep == i)[0].size > 0:
                 flag = True
                 if not self.surface == '':
-                    self.subs.addItem(self.item_s[i * self.local_size])
-                    self.subs.addItem(self.item_s[i * self.local_size + 1])
-                    for j in range(self.item_c[i].size):
-                        self.subs.addItem(self.item_c[i][j])
+                    for j in range(self.local_size):
+                        self.subs.addItem(self.item_s[i * self.local_size + j])
+                    '''for j in range(self.item_c[i].size):
+                        self.subs.addItem(self.item_c[i][j])'''
                 for j in range(self.item_r[i].size):
                     self.rota.addItem(self.item_r[i][j])
                 for pol in range(self.exp.size):

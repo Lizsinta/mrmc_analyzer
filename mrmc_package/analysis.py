@@ -164,7 +164,7 @@ def load_substrate(f_rep, local_size):
         name = f_rep
         seq = [1, 2, 3, 0]
     else:
-        f_rep + r'\result\result0.txt'
+        name = f_rep + r'\result\result0.txt'
         seq = [0, 1, 2, 4]
     with open(name, 'r') as f:
         coordinate_substrate = np.array([])
@@ -182,8 +182,11 @@ def load_substrate(f_rep, local_size):
             ele_substrate = np.append(ele_substrate, temp[seq[3]][:-1] if seq[3] == 4 else temp[seq[3]])
         coordinate_substrate = coordinate_substrate.reshape(int(coordinate_substrate.size / 3), 3)
 
-    surface_size = coordinate_substrate.shape[0] - local_size
-    return coordinate_substrate[:surface_size], ele_substrate[:surface_size]
+    if name.split('.')[1] == 'xyz':
+        return coordinate_substrate, ele_substrate
+    else:
+        surface_size = coordinate_substrate.shape[0] - local_size
+        return coordinate_substrate[:surface_size], ele_substrate[:surface_size]
 
 
 def tca_filter(surface_c, surface_e, shift_c):
@@ -232,7 +235,7 @@ def tca_filter(surface_c, surface_e, shift_c):
     return filtered
 
 
-def select_atom(surface_c, surface_e, local_c, local_e, rpath, symbol):
+def select_atom(surface_c, surface_e, local_c, local_e, rpath):
     coordinate = []
     dist = []
     element = []
@@ -242,7 +245,7 @@ def select_atom(surface_c, surface_e, local_c, local_e, rpath, symbol):
         temp_ele = local_e.copy()
         temp_index = np.array([], dtype=int)
         for j in range(surface_e.size):
-            if sqrt(((surface_c[j] - temp[0]) ** 2).sum()) < rpath[np.where(symbol == surface_e[j])[0][0]]:
+            if sqrt(((surface_c[j] - temp[0]) ** 2).sum()) < rpath[surface_e[j]]:
                 temp = np.vstack((temp, surface_c[j]))
                 temp_ele = np.append(temp_ele, surface_e[j])
                 temp_index = np.append(temp_index, j)
@@ -326,14 +329,13 @@ def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
         for j in range(local_c.shape[1]):
             item_scatter = np.append(item_scatter, scatter(local_c[i][j][0], local_c[i][j][1],
                                                            local_c[i][j][2], c=color[j], alpha=1, scale=0.3))
-            if j == 0:
-                graph.addItem(item_scatter[-1])
+            graph.addItem(item_scatter[-1])
 
         item_cylinder_rep = np.array([])
         dist = np.array([])
         add_list = np.array([], dtype=int)
         for j in range(surface_e.size):
-            if sqrt(((local_c[i][0] - surface_c[j]) ** 2).sum()) < rpath:
+            if sqrt(((local_c[i][0] - surface_c[j]) ** 2).sum()) < rpath[surface_e[j]]:
                 dist = np.append(dist, sqrt(((local_c[i][0] - surface_c[j]) ** 2).sum()))
                 add_list = np.append(add_list, j)
         nearest = add_list[np.argmin(dist)]
@@ -368,8 +370,9 @@ def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
             locate = np.where(ele[rep][i] == sym[:size])[0][0]
             label[locate] = np.append(label[locate], rep)
             if not coor[rep][i][0] == 0:
-                azi = abs(round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0))
-                azi = azi if azi < 90 else 180 - azi
+                #azi = abs(round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0))
+                #azi = azi if azi < 90 else 180 - azi
+                azi = round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0)
             else:
                 azi = 90
             stat_a[locate] = np.append(stat_a[locate], azi)
@@ -418,7 +421,7 @@ def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph):
             graph.addItem(item_rep[-1])
         if not surface == '':
             for j in range(surface_e.size):
-                if sqrt(((surface_c[j] - local_c[i][0]) ** 2).sum()) < rpath:
+                if sqrt(((surface_c[j] - local_c[i][0]) ** 2).sum()) < rpath[surface_e[j]]:
                     temp = surface_c[j] - local_c[i][0]
                     if surface_e[j] == 'O':
                         c = 'purple' if surface == 'TiO2' and surface_c[j][2] > 0 else 'red'

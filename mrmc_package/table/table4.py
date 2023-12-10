@@ -36,7 +36,7 @@ class TABLE_POL:
         self.length = np.round(np.arange(float(l_range[0]), float(l_range[1]) + l_step, l_step), self.decimals)
         self.angle = np.linspace(0, pi, 91)
         self.angle_degree = self.angle / pi * 180
-        self.path_size = self.length.size ** 2 * self.angle.size
+        self.path_size = int(self.length.size ** 2 * self.angle.size)
 
         self.chi_1st = np.zeros((self.amount, k0.size))
         self.log_1st = np.zeros(self.amount)
@@ -59,8 +59,8 @@ class TABLE_POL:
         self.single = np.empty((self.atom.size, self.length.size), dtype=FEFF)
         if self.ms_en:
             self.commute = np.empty((self.atom.size, self.length.size), dtype=FEFF)
-            self.double = np.empty((comb(self.atom.size, 2), self.path_size), dtype=FEFF)
-            self.triple = np.empty((comb(self.atom.size, 2), self.path_size), dtype=FEFF)
+            self.double = np.empty((int(comb(self.atom.size, 2)), self.path_size), dtype=FEFF)
+            self.triple = np.empty((int(comb(self.atom.size, 2)), self.path_size), dtype=FEFF)
 
         # start=timer()
         self.create_single()
@@ -82,10 +82,10 @@ class TABLE_POL:
         return lrange, step
 
     def single_scattering(self, target):
-        symbol = np.where(self.atom == self.element[target])[0][0]
-        file = self.folder + r'\table2_%d' % symbol
-        table = self.single[symbol - 1]
-        de = self.dE[symbol - 1]
+        symbol = np.where(self.atom[1:] == self.element[target])[0][0]
+        file = self.folder + r'\table2_%d' % (symbol + 1)
+        table = self.single[symbol]
+        de = self.dE[self.element[target]]
         if self.distance[target] < self.length[-1]:
             try:
                 index = np.where(self.length == round(self.distance[target], self.decimals))[0][0]
@@ -124,10 +124,10 @@ class TABLE_POL:
             self.single_scattering(i)
 
     def commute_scattering(self, target):
-        symbol = np.where(self.atom == self.element[target])[0][0]
-        file = self.folder + r'\table2s_%d' % symbol
-        table = self.single[symbol - 1]
-        de = self.dE[symbol - 1]
+        symbol = np.where(self.atom[1:] == self.element[target])[0][0]
+        file = self.folder + r'\table2s_%d' % (symbol+1)
+        table = self.single[symbol]
+        de = self.dE[self.element[target]]
         if self.distance[target] < self.length[-1] / 2:
             index = np.where(self.length == round(self.distance[target], self.decimals))[0][0]
             if not type(table[index]) == FEFF:
@@ -161,14 +161,14 @@ class TABLE_POL:
         return True
 
     def multi_scattering(self, step1, step2, debug=False):
-        symbol = np.array([np.where(self.atom == self.element[step1])[0][0],
-                           np.where(self.atom == self.element[step2])[0][0]])
+        symbol = np.array([np.where(self.atom[1:] == self.element[step1])[0][0],
+                           np.where(self.atom[1:] == self.element[step2])[0][0]])
         symbol = np.flipud(symbol) if symbol[1] < symbol[0] else symbol
-        file2nd = self.folder + r'\table3_%d_%d' % (symbol[0], symbol[1])
+        file2nd = self.folder + r'\table3_%d_%d' % (symbol[0] + 1, symbol[1] + 1)
         table2nd = self.double[int(symbol.sum())]
-        file3rd = self.folder + r'\table4_%d_%d' % (symbol[0], symbol[1])
+        file3rd = self.folder + r'\table4_%d_%d' % (symbol[0] + 1, symbol[1] + 1)
         table3rd = self.triple[int(symbol.sum()) - 2]
-        de = self.dE[np.where(self.atom == self.element[step1])[0][0] - 1]
+        de = self.dE[self.element[step1]]
         d_vector = sqrt(((self.coordinate[step2] - self.coordinate[step1]) ** 2).sum())
         if round(self.distance[step1], self.decimals) > self.length[-1] or \
                 round(d_vector, self.decimals) > self.length[-1]:
@@ -257,7 +257,7 @@ class TABLE_POL:
         if get_k:
             self.k, chi_cut = k_range(self.k0, chi0, self.k_head, self.k_tail, False)
         else:
-            k, chi_cut = k_range(self.k0, chi0, self.k_head, self.k_tail, False)
+            chi_cut = k_range(self.k0, chi0, self.k_head, self.k_tail, padding=False, get_k=get_k)
         self.chi, self.ft = back_k_space(chi_cut, self.r, self.k.size, self.r_head, self.r_tail)
 
 
