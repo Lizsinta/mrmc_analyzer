@@ -255,6 +255,7 @@ def select_atom(surface_c, surface_e, local_c, local_e, rpath):
         adsorb = np.append(adsorb, temp_index[np.argsort(temp_d)[0]])
         coordinate.append(temp[align])
         element.append(temp_ele[align])
+        print(temp_ele[align])
         dist.append(np.array([sqrt((coordinate[-1][_] ** 2).sum()) for _ in range(coordinate[-1].shape[0])]))
     return coordinate, dist, element, adsorb
 
@@ -361,13 +362,14 @@ def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
     if select.size == 0:
         select = np.arange(len(ele))
     size = sym.size if sym.size <= 3 else 3
+    sym_dict = {sym[_]: _ for _ in range(size)}
     stat_d = [np.array([])] * sym.size
     stat_a = [np.array([])] * sym.size
     stat_e = [np.array([])] * sym.size
     label = [np.array([], dtype=int)] * sym.size
     for rep in select:
-        for i in range(1, 3):
-            locate = np.where(ele[rep][i] == sym[:size])[0][0]
+        for i in range(1, ele[rep].size):
+            locate = sym_dict[ele[rep][i]]
             label[locate] = np.append(label[locate], rep)
             if not coor[rep][i][0] == 0:
                 #azi = abs(round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0))
@@ -413,6 +415,7 @@ def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph):
     graph.addItem(line([0, 0], [-3, 3], [0, 0], c='g'))
     graph.addItem(line([0, 0], [0, 0], [-3, 3], c='b'))
     item_list = []
+    print(local_e)
     for i in range(local_c.shape[0]):
         item_rep = np.array([])
         for j in range(1, local_e.size):

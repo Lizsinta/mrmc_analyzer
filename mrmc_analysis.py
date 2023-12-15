@@ -178,15 +178,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.local_size = self.local_e.size
             temp = f.readline().split()
             self.surface = temp[1] if len(temp) > 1 else ''
-            temp = f.readline().split()[1:]
+            sym = np.unique(self.local_e[1:])
+            if not self.surface == '':
+                if self.surface == 'TiO2':
+                    sym = np.append(sym, np.array(['O', 'Ti']))
+                elif self.surface == 'Al2O3':
+                    sym = np.append(sym, np.array(['O', 'Al']))
+            temp = f.readline().split()
+            if not temp[0].find('dw') == -1 or not temp[0].find('SIG2') == -1:
+                temp = temp[1:]
+                if temp[0].find('=') == -1:
+                    dw = {i: float(temp[0]) for i in sym}
+                else:
+                    dw = {_[0]: float(_[1]) for _ in np.char.split(np.asarray(temp, dtype=str), '=')}
+                temp = f.readline().split()[1:]
+            else:
+                dw = {i: 0.0 for i in sym}
+                temp = temp[1:]
             if temp[0].find('=') == -1:
-                dE = {i:float(j) for i, j in zip(np.unique(self.local_e[1:]), temp)}
+                dE = {i:float(j) for i, j in zip(sym, temp)}
             else:
                 dE = {_[0]:float(_[1]) for _ in np.char.split(np.asarray(temp, dtype=str), '=')}
             k = [float(_) for _ in f.readline().split()[1:]]
             r = [float(_) for _ in f.readline().split()[1:]]
             print(k, r)
-        return k, r, dE
+        return k, r, dw, dE
 
     def load_inp(self, k, r):
         with (open(self.folder + r'/mrmc.inp', 'r') as f):
@@ -232,8 +248,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if not lines.find('S0') == -1:
                     break
             s0 = float(lines.split(':')[1])
-            sig2 = float(f.readline().split(':')[1])
-            for i in range(3):
+            for i in range(4):
                 f.readline()
             if not len(self.surface) == 0:
                 temp = f.readline().split(':')[1]
@@ -265,7 +280,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if not lines.find('material_folder') == -1:
                     break
             f_material = lines.split(lines.split(':')[0] + ':')[1].split('\n')[0].strip()
-            return weight, s0, sig2, ms, f_material, surface_file, surface_range
+            return weight, s0, ms, f_material, surface_file, surface_range
 
     def load_rep(self):
         self.local_c, flag = read_rep(self.folder, self.choice_window(), self.local_size)
@@ -403,13 +418,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         plt.title('%.1f-%.3f' % (sue.mean(), sue.std()))
         plt.show()'''
 
-    def cal_spectrum(self, folder_material, sig2, dE, s0, ms, weight):
+    def cal_spectrum(self, folder_material, dw, dE, s0, ms, weight):
         self.table = np.zeros((self.exp.size, self.rep), dtype=TABLE_POL)
         pol = np.arange(3) if self.exp.size == 3 else (np.arange(2) + 2)
         for i in range(self.exp.size):
             for j in range(self.rep):
                 self.table[i][j] = TABLE_POL(self.exp[i].k_start, self.exp[i].k_end, self.exp[i].r_start,
-                                             self.exp[i].r_end, sig2, dE, s0, self.exp[i].k0, self.select_c[j],
+                                             self.exp[i].r_end, dw, dE, s0, self.exp[i].k0, self.select_c[j],
                                              self.select_e[j], folder_material, pol[i], ms_en=ms, weight=weight)
         chi_sum = np.zeros((self.exp.size, self.exp[0].k.size))
         self.chi = np.zeros((self.exp.size, self.rep, self.exp[0].k.size))
@@ -501,11 +516,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.clear()
         self.folder = folder
-        k, r, dE = self.load_info()
-        weight, s0, sig2, ms, f_material, surface_file, surface_range = self.load_inp(k, r)
+        k, r, dw, dE = self.load_info()
+        weight, s0, ms, f_material, surface_file, surface_range = self.load_inp(k, r)
         self.load_rep()
         self.load_atom()
-        chi_sum = self.cal_spectrum(f_material, sig2, dE, s0, ms, weight)
+        chi_sum = self.cal_spectrum(f_material, dw, dE, s0, ms, weight)
         self.cal_rdf()
 
 

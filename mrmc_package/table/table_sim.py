@@ -4,8 +4,8 @@ from math import sqrt, pi
 from scipy.special import comb
 
 
-class TABLE_POL:
-    def __init__(self, k_head, k_tail, r_head, r_tail, dw, dE, s02, k0, coor, element,
+class TABLE_SIM:
+    def __init__(self, k_head, k_tail, r_head, r_tail, sig2, dE, s02, k0, coor, element,
                  folder, polarization=-1, ms_en=False, weight=3):
         self.k0 = k0
         self.k_head = k_head
@@ -15,7 +15,6 @@ class TABLE_POL:
         self.element = element
         self.coordinate = coor
         self.distance = np.array([sqrt((_ ** 2).sum()) for _ in coor])
-        self.sig2 = {key:np.exp(-2 * dw[key] ** 2 * k0 ** 2) for key in dw}
         self.dE = dE
         self.s02 = s02
         self.folder = folder
@@ -32,11 +31,13 @@ class TABLE_POL:
 
         l_range, l_step = self.read_ini(self.folder)
         self.decimals = 1 if (l_step * 100) % 10 == 0 else 2
+        sig2 = sig2 if type(sig2) == np.ndarray else np.array([sig2] * (self.element.size - 1))
+        self.sig2 = np.array([np.exp(2 * sig2[i] * k0 ** 2) for i in range(sig2.size)])
 
         self.length = np.round(np.arange(float(l_range[0]), float(l_range[1]) + l_step, l_step), self.decimals)
         self.angle = np.linspace(0, pi, 91)
         self.angle_degree = self.angle / pi * 180
-        self.path_size = int(self.length.size ** 2 * self.angle.size)
+        self.path_size = self.length.size ** 2 * self.angle.size
 
         self.chi_1st = np.zeros((self.amount, k0.size))
         self.log_1st = np.zeros(self.amount)
@@ -59,8 +60,8 @@ class TABLE_POL:
         self.single = np.empty((self.atom.size, self.length.size), dtype=FEFF)
         if self.ms_en:
             self.commute = np.empty((self.atom.size, self.length.size), dtype=FEFF)
-            self.double = np.empty((int(comb(self.atom.size, 2)), self.path_size), dtype=FEFF)
-            self.triple = np.empty((int(comb(self.atom.size, 2)), self.path_size), dtype=FEFF)
+            self.double = np.empty((comb(self.atom.size, 2), self.path_size), dtype=FEFF)
+            self.triple = np.empty((comb(self.atom.size, 2), self.path_size), dtype=FEFF)
 
         # start=timer()
         self.create_single()
@@ -85,8 +86,7 @@ class TABLE_POL:
         symbol = np.where(self.atom[1:] == self.element[target])[0][0]
         file = self.folder + r'\table2_%d' % (symbol + 1)
         table = self.single[symbol]
-        de = self.dE[self.element[target]]
-        sig2 = self.sig2[self.element[target]]
+        de = self.dE[symbol]
         if self.distance[target] < self.length[-1]:
             try:
                 index = np.where(self.length == round(self.distance[target], self.decimals))[0][0]
@@ -114,7 +114,7 @@ class TABLE_POL:
                 polar = 1
             chi0 = np.multiply(np.multiply(np.multiply(
                 np.sin(2 * self.distance[target] * self.k0 + table[index].phase),
-                np.exp(-2 * self.distance[target] * table[index].lamb)), sig2),
+                np.exp(-2 * self.distance[target] * table[index].lamb)), self.sig2[target - 1]),
                 table[index].amp) / (self.distance[target] ** 2) * polar
             self.chi_1st[target] = deltaE_shift(self.k0, chi0, de)
         else:
@@ -126,10 +126,10 @@ class TABLE_POL:
 
     def commute_scattering(self, target):
         symbol = np.where(self.atom[1:] == self.element[target])[0][0]
-        file = self.folder + r'\table2s_%d' % (symbol+1)
+        file = self.folder + r'\table2s_%d' % (symbol + 1)
         table = self.single[symbol]
-        de = self.dE[self.element[target]]
-        sig2 = self.sig2[self.element[target]]
+        de = self.dE[symbol]
+        sig2 = self.sig2[symbol]
         if self.distance[target] < self.length[-1] / 2:
             index = np.where(self.length == round(self.distance[target], self.decimals))[0][0]
             if not type(table[index]) == FEFF:
@@ -144,7 +144,7 @@ class TABLE_POL:
                           self.coordinate[0][self.pol]) / self.distance[target]) ** 2 if self.pol >= 0 else 1
             chi0 = np.multiply(np.multiply(np.multiply(
                 np.sin(2 * rpath * self.k0 + table[index].phase),
-                np.exp(-2 * rpath * table[index].lamb)), sig2),
+                np.exp(-2 * rpath * table[index].lamb)), self.sig2[target - 1]),
                 table[index].amp) / (rpath ** 2) * polar
             self.chi_commute[target] = deltaE_shift(self.k0, chi0, de)
         else:
@@ -170,8 +170,8 @@ class TABLE_POL:
         table2nd = self.double[int(symbol.sum())]
         file3rd = self.folder + r'\table4_%d_%d' % (symbol[0] + 1, symbol[1] + 1)
         table3rd = self.triple[int(symbol.sum()) - 2]
-        de = self.dE[self.element[step1]]
-        sig2 = self.sig2[self.element[step1]]
+        de = self.dE[np.where(self.atom == self.element[step1])[0][0]]
+        sig2 = self.sig2[np.where(self.atom == self.element[step1])[0][0]]
         d_vector = sqrt(((self.coordinate[step2] - self.coordinate[step1]) ** 2).sum())
         if round(self.distance[step1], self.decimals) > self.length[-1] or \
                 round(d_vector, self.decimals) > self.length[-1]:
@@ -206,7 +206,7 @@ class TABLE_POL:
             self.log_2nd[step1][step2] = 1
             chi0 = np.multiply(np.multiply(np.multiply(
                 np.sin(2 * rpath_dou * self.k0 + table2nd[index].phase),
-                np.exp(-2 * rpath_dou * table2nd[index].lamb)),sig2),
+                np.exp(-2 * rpath_dou * table2nd[index].lamb)), self.sig2[step1 - 1]),
                 table2nd[index].amp) / (rpath_dou ** 2) * (polar_1 + polar_2)
             self.chi_2nd[step1][step2] = deltaE_shift(self.k0, chi0, de)
         else:
@@ -220,7 +220,7 @@ class TABLE_POL:
             self.log_3rd[step1][step2] = 1
             chi0 = np.multiply(np.multiply(np.multiply(
                 np.sin(2 * rpath_tri * self.k0 + table3rd[index].phase),
-                np.exp(-2 * rpath_tri * table3rd[index].lamb)), ig2),
+                np.exp(-2 * rpath_tri * table3rd[index].lamb)), self.sig2[step1 - 1]),
                 table3rd[index].amp) / (rpath_tri ** 2) * (polar_1 + polar_2)
             self.chi_3rd[step1][step2] = deltaE_shift(self.k0, chi0, de)
         else:
@@ -260,7 +260,7 @@ class TABLE_POL:
         if get_k:
             self.k, chi_cut = k_range(self.k0, chi0, self.k_head, self.k_tail, False)
         else:
-            chi_cut = k_range(self.k0, chi0, self.k_head, self.k_tail, padding=False, get_k=get_k)
+            k, chi_cut = k_range(self.k0, chi0, self.k_head, self.k_tail, False)
         self.chi, self.ft = back_k_space(chi_cut, self.r, self.k.size, self.r_head, self.r_tail)
 
 
@@ -357,7 +357,7 @@ class TABLE_POL:
             change = True
         else:
             change = np.unique(elem, return_counts=True)[1] == np.unique(self.element, return_counts=True)[1]
-            change = not (change if type(change) == bool else change.all())
+            change = not (change if type(change) == bool else change.all())                                         
         if change:
             self.element = elem
             self.amount = dist.size
@@ -375,9 +375,19 @@ class TABLE_POL:
             print('chi_1st:', self.chi_1st.shape)
         self.sum_up_chi(False, debug)
 
-    def flush(self):
-        self.create_single()
-        if self.ms_en:
-            self.create_commute()
-            self.create_multi()
-        self.sum_up_chi(False)
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    from mrmc_package import get_distance, EXP
+    coor = np.array([[0, 0, 0], [ 1.21936333, -1.12867, 1.40977667], [-1.32071333, 0.68499, -0.98853333], [1.55786667,  0.68149, -0.91665333]])
+    dist = get_distance(coor)
+    ele = np.array(['Cu', 'S', 'O', 'O'])
+    fexp = ['D:\simulation\Cu202_sum.rex', 'D:\simulation\Cu207_sum.rex', 'D:\simulation\Cu211_sum_d.rex']
+    expe = np.array([EXP(_, 3, 9, 1, 2.7) for _ in fexp])
+    table = np.array([TABLE_SIM(3, 9, 1, 2.7, np.array([0.00033, 0.00018, 0.0001]), [13, -3],
+                      1, expe[0].k, coor, ele, r'D:\simulation', _) for _ in range(3)] )
+    for i in range(3):
+        plt.subplot(1, 3, i + 1)
+        plt.plot(expe[i].k, expe[i].chi, c='k')
+        plt.plot(table[i].k, table[i].chi, c='r')
+        plt.title('%.3f'%expe[i].r_factor_chi(table[i].chi))
+    plt.show()
