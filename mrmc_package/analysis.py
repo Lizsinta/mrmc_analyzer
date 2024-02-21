@@ -361,25 +361,46 @@ def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
 def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
     if select.size == 0:
         select = np.arange(len(ele))
+    sym = np.append(sym, 'Ol')
     size = sym.size if sym.size <= 3 else 3
     sym_dict = {sym[_]: _ for _ in range(size)}
-    stat_d = [np.array([])] * sym.size
-    stat_a = [np.array([])] * sym.size
-    stat_e = [np.array([])] * sym.size
+    stat_d = [np.array([])] * (sym.size + 2)
+    stat_a = [np.array([])] * (sym.size + 2)
+    stat_e = [np.array([])] * (sym.size + 2)
     label = [np.array([], dtype=int)] * sym.size
+
     for rep in select:
         for i in range(1, ele[rep].size):
-            locate = sym_dict[ele[rep][i]]
+            if ele[rep][i] == 'O' and dist[rep][i] > 2:
+                locate = 2
+            else:
+                locate = sym_dict[ele[rep][i]]
             label[locate] = np.append(label[locate], rep)
             if not coor[rep][i][0] == 0:
-                #azi = abs(round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0))
-                #azi = azi if azi < 90 else 180 - azi
-                azi = round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0)
+                azi = abs(round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0))
+                azi = azi if azi < 90 else 180 - azi
+                #azi = round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0)
             else:
                 azi = 90
+            polar = acos(coor[rep][i][2] / dist[rep][i]) / pi * 180
             stat_a[locate] = np.append(stat_a[locate], azi)
-            stat_e[locate] = np.append(stat_e[locate], round(acos(coor[rep][i][2] / dist[rep][i]) / pi * 180, 0))
+            stat_e[locate] = np.append(stat_e[locate], round(polar if polar < 90 else (180 - polar), 0))
             stat_d[locate] = np.append(stat_d[locate], round(dist[rep][i], 2))
+            if ele[rep][i] == 'O':
+                if dist[rep][i] > 2:
+                    stat_a[-1] = np.append(stat_a[-1], azi)
+                    stat_e[-1] = np.append(stat_e[-1], round(polar if polar < 90 else (180 - polar), 0))
+                    stat_d[-1] = np.append(stat_d[-1], round(dist[rep][i], 2))
+                elif dist[rep][i] <= 2:
+                    stat_a[-2] = np.append(stat_a[-2], azi)
+                    stat_e[-2] = np.append(stat_e[-2], round(polar if polar < 90 else (180 - polar), 0))
+                    stat_d[-2] = np.append(stat_d[-2], round(dist[rep][i], 2))
+    print('O1:%.3f-%.3f, %.1f-%.1f, %.1f-%.1f' % (stat_d[-2].mean(), stat_d[-2].std(),
+                                                  stat_a[-2].mean(), stat_a[-2].std(),
+                                                  stat_e[-2].mean(), stat_e[-2].std()))
+    print('O2:%.3f-%.3f, %.1f-%.1f, %.1f-%.1f' % (stat_d[-1].mean(), stat_d[-1].std(),
+                                                  stat_a[-1].mean(), stat_a[-1].std(),
+                                                  stat_e[-1].mean(), stat_e[-1].std()))
 
         # bond_angle = np.append(bond_angle, 180 - cal_angle(coor[i][1], coor[i][0], coor[i][2]))
     rdf = [stat_d[0], stat_a[0], stat_e[0]]
@@ -420,7 +441,11 @@ def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph):
         item_rep = np.array([])
         for j in range(1, local_e.size):
             temp = local_c[i][j] - local_c[i][0]
-            item_rep = np.append(item_rep, scatter(temp[0], temp[1], temp[2], c=color[j], scale=0.3))
+            if j == 1:
+                c = color[j]
+            if j > 1:
+                c = color[2] if np.sqrt((temp**2).sum()) < 2 else color[3]
+            item_rep = np.append(item_rep, scatter(temp[0], temp[1], temp[2], c=c, scale=0.3))
             graph.addItem(item_rep[-1])
         if not surface == '':
             for j in range(surface_e.size):

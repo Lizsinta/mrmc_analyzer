@@ -1,4 +1,4 @@
-from mrmc_package import EXP, init_3dplot, TABLE_POL, norm_fft
+from mrmc_package import EXP, init_3dplot, TABLE_POL, norm_fft, cal_angle
 from mrmc_package.analysis import *
 from mrmc_package.ui_analysis import Ui_MainWindow
 import pyqtgraph.opengl as gl
@@ -56,6 +56,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.plotz.addLegend((0, 0), labelTextSize='12pt', labelTextColor='k')
         self.chizLayout.addWidget(self.plotz)
         self.widget_plot = {0: self.plotx, 1: self.ploty, 2: self.plotz}
+        self.rota.setSizePolicy(self.plotz.sizePolicy())
+        self.subs.setSizePolicy(self.plotz.sizePolicy())
 
         fn = QFont()
         fn.setPointSize(15)
@@ -305,7 +307,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath)
             self.symbol = np.unique(np.append(self.local_e[1:], self.symbol))
         else:
-            self.symbol = np.unique(np.append(self.local_e[1:], ['O', 'Ti']))
+            self.symbol = np.unique(self.local_e[1:])#np.unique(np.append(self.local_e[1:], ['O', 'Ti']))
             self.select_c = self.local_c.copy()
             self.select_d = np.array([])
             for i in range(self.local_c.shape[0]):
@@ -449,11 +451,39 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 graph_size += 1
         urdf = [np.unique(self.rdf[_], return_counts=True) for _ in range(graph_size)]
         self.bar_spher = [bar(urdf[_][0], urdf[_][1], width=0.5) for _ in range(graph_size)]
-        third_ele = True if graph_size > 6 else False
+
+        ba = np.array([180 - cal_angle(self.select_c[_, 1, :], np.zeros(3), self.select_c[_, 2, :]) for _ in range(self.rep)])
+        if self.select_c.shape[1] > 3:
+            ba = np.append(ba, np.array([
+                180 - cal_angle(self.select_c[_, 1, :], np.zeros(3), self.select_c[_, 3, :]) for _ in range(self.rep)]))
+        ba = ba[np.where(ba > 130)[0]]
+        urdf_ba = np.unique(np.round(ba, 0), return_counts=True)
+
+        self.g3dLayout.removeWidget(self.subs)
+        self.ba = pg.PlotWidget(background=(255, 255, 255, 255))
+        fn = QFont()
+        fn.setPointSize(20)
+        self.ba.getAxis('bottom').setTickFont(fn)
+        self.ba.getAxis('bottom').setTextPen('black')
+        self.ba.getAxis('left').setTickFont(fn)
+        self.ba.getAxis('left').setTextPen('black')
+        self.g3dLayout.addWidget(self.ba)
+        self.g3dLayout.setStretch(0, 1)
+        self.g3dLayout.setStretch(1, 1)
+        self.ba_bar = bar(urdf_ba[0], urdf_ba[1], width=0.5)
+        self.ba.addItem(self.ba_bar)
+        self.ba.setLabel('left', 'count')
+        self.ba.setLabel('bottom', 'angle', unit='Å')
+        self.ba.setTitle('S-Cu-O angle', color='#000000', size='30pt')
+        print('%.1f-%.1f' % (ba.mean(), ba.std()))
+
+
+        '''third_ele = True if graph_size > 6 else False
         for i in range(6, 9):
-            self.action_dict[i].setEnabled(third_ele)
+            self.action_dict[i].setEnabled(third_ele)'''
         for i in range(graph_size):
-            self.info_dict[i].setText('%.2f-%.2f' % (self.rdf[i].mean(), self.rdf[i].std()))
+            if i < 6:
+                self.info_dict[i].setText('%.3f-%.3f' % (self.rdf[i].mean(), self.rdf[i].std()))
             self.widget_dict[i].addItem(self.bar_spher[i])
             self.widget_dict[i].setLabel('left', 'count')
             if i == 0 or i == 3 or i == 6:
@@ -462,12 +492,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.widget_dict[i].setXRange(np.min(urdf[i][0]) - 0.01, np.max(urdf[i][0]) + 0.01)
             else:
                 self.widget_dict[i].setLabel('bottom', 'angle', unit='°')
+        symbol = np.append(self.symbol, 'Ol')
+        print(symbol)
         for i in range(graph_size // 3):
-            self.widget_dict[i * 3].setTitle('R (%s-%s)' % (self.local_e[0], self.symbol[i]),
+            self.widget_dict[i * 3].setTitle('R (%s-%s)' % (self.local_e[0], symbol[i]),
                                              color='#000000', size='20pt')
-            self.widget_dict[i * 3 + 1].setTitle('φ (%s-%s)' % (self.local_e[0], self.symbol[i]),
+            self.widget_dict[i * 3 + 1].setTitle('φ (%s-%s)' % (self.local_e[0], symbol[i]),
                                                  color='#000000', size='20pt')
-            self.widget_dict[i * 3 + 2].setTitle('θ (%s-%s)' % (self.local_e[0], self.symbol[i]),
+            self.widget_dict[i * 3 + 2].setTitle('θ (%s-%s)' % (self.local_e[0], symbol[i]),
                                                  color='#000000', size='20pt')
         self.do.plotItem.enableAutoRange(axis='x', enable=False)
 
@@ -519,6 +551,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         k, r, dw, dE = self.load_info()
         weight, s0, ms, f_material, surface_file, surface_range = self.load_inp(k, r)
         self.load_rep()
+        '''for i in range(self.rep):
+            if self.local_c[i][1][0] < 0:
+                self.local_c[i][1][0] = -self.local_c[i][1][0]
+            if self.local_c[i][2][0] > 0:
+                self.local_c[i][2][0] = -self.local_c[i][2][0]'''
         self.load_atom()
         chi_sum = self.cal_spectrum(f_material, dw, dE, s0, ms, weight)
         self.cal_rdf()
@@ -600,14 +637,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for i in range(self.current_rep.size):
             os.popen('copy "%s" "%s"' % (self.folder + r'\result\result%d.txt' % self.current_rep[i],
                                          address + r'\result\result%d.txt' % i))
-        with open(address + r'\mrmc.inp', 'r+') as f:
-            while True:
-                posi = f.tell()
-                line = f.readline()
-                if not line.find('replicas_size') == -1:
-                    f.seek(posi)
-                    f.write(('replicas_size:%d' % self.current_rep.size).ljust(len(line) - 1) + '\n')
-                    break
+        while True:
+            try:
+                with open(address + r'\mrmc.inp', 'r+') as f:
+                    while True:
+                        posi = f.tell()
+                        line = f.readline()
+                        if not line.find('replicas_size') == -1:
+                            f.seek(posi)
+                            f.write(('replicas_size:%d' % self.current_rep.size).ljust(len(line) - 1) + '\n')
+                            break
+            except PermissionError:
+                continue
+            else:
+                break
         chi_sum = np.zeros((self.exp.size, self.exp[0].k.size))
         ft_sum = np.zeros((self.exp.size, self.exp[0].r.size))
         for pol in range(self.exp.size):
@@ -619,25 +662,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             ft_sum[pol] /= self.current_rep.size
         cross_sum = np.array(
                 [chi_sum[_] * np.transpose([ft_sum[_][self.exp[_].r_range]]) for _ in range(self.exp.size)])
-        with open(address + r'\info.txt', 'r+') as f:
-            while True:
-                posi = f.tell()
-                line = f.readline()
-                if not line.find('best_R_factor') == -1:
-                    f.seek(posi)
-                    if self.fit_space == 'k':
-                        best_r = np.array([self.exp[_].r_factor_chi(chi_sum[_]) for _ in range(self.exp.size)])
-                    elif self.fit_space == 'r':
-                        best_r = np.array([self.exp[_].r_factor_ft(ft_sum[_]) for _ in range(self.exp.size)])
-                    else:
-                        best_r = np.array([self.exp[_].r_factor_cross(cross_sum[_]) for _ in range(self.exp.size)])
-                    data = 'best_R_factor([001], [1-10], [110]): %.6f (' % best_r.sum()
-                    for i in best_r:
-                        data += str(i) + ' '
-                    data = (data[:-1] + ')').ljust(len(line) - 1) + '\n'
-                    f.write(data)
-                    break
-
+        while True:
+            try:
+                with open(address + r'/info.txt', 'r+') as f:
+                    while True:
+                        posi = f.tell()
+                        line = f.readline()
+                        if not line.find('best_R_factor') == -1:
+                            f.seek(posi)
+                            if self.fit_space == 'k':
+                                best_r = np.array([self.exp[_].r_factor_chi(chi_sum[_]) for _ in range(self.exp.size)])
+                            elif self.fit_space == 'r':
+                                best_r = np.array([self.exp[_].r_factor_ft(ft_sum[_]) for _ in range(self.exp.size)])
+                            else:
+                                best_r = np.array([self.exp[_].r_factor_cross(cross_sum[_]) for _ in range(self.exp.size)])
+                            data = 'best_R_factor([001], [1-10], [110]): %.6f (' % best_r.sum()
+                            for i in best_r:
+                                data += '%.6f ' % i
+                            data = (data[:-1] + ')').ljust(len(line) - 1) + '\n'
+                            f.write(data)
+                            break
+            except PermissionError:
+                continue
+            else:
+                break
         with open(self.folder + r'\model.dat', 'r') as fi:
             name = ['initial', 'final', 'best']
             with open(address + r'\model.dat', 'w') as fo:
@@ -673,7 +721,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                             fo.write('%s %.6f %.6f %.6f\n' % (self.local_e[i], temp[0], temp[1], temp[2]))
                         for i in range(self.surface_e.size):
                             temp = self.surface_c[i] - temp_c[rep][0]
-                            if sqrt((temp**2).sum()) < self.rpath:
+                            if sqrt((temp**2).sum()) < self.rpath[self.surface_e[i]]:
                                 fo.write('%s %.6f %.6f %.6f\n' % (self.surface_e[i], temp[0], temp[1], temp[2]))
                     fo.write('\n')
             QMessageBox.information(self, 'Output succeed', 'Output folder:\n%s' % address)
@@ -772,12 +820,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         graph_size += 1
             urdf = [np.unique(rdf[_], return_counts=True) for _ in range(graph_size)]
             # urdf[self.range_target] = np.unique(self.rdf[self.range_target], return_counts=True)
+
+            ba = np.array(
+                [180 - cal_angle(self.select_c[_, 1, :], np.zeros(3), self.select_c[_, 2, :]) for _ in self.current_rep])
+            if self.select_c.shape[1] > 3:
+                ba = np.append(ba, np.array([
+                    180 - cal_angle(self.select_c[_, 1, :], np.zeros(3), self.select_c[_, 3, :]) for _ in
+                    self.current_rep]))
+            ba = ba[np.where(ba > 130)[0]]
+            urdf_ba = np.unique(np.round(ba, 0), return_counts=True)
+            self.ba_bar.setOpts(x=urdf_ba[0], height=urdf_ba[1])
+            print('%.1f-%.1f' % (ba.mean(), ba.std()))
+
             for i in range(graph_size):
                 if i < 6 and self.current_rep.size > 0:
                     if rdf[i].size > 0:
-                        self.info_dict[i].setText('%.2f-%.2f' % (rdf[i].mean(), rdf[i].std()))
+                        self.info_dict[i].setText('%.3f-%.3f' % (rdf[i].mean(), rdf[i].std()))
                     else:
-                        self.info_dict[i].setText('%.2f-%.2f' % (0, 0))
+                        self.info_dict[i].setText('%.3f-%.3f' % (0, 0))
                 self.bar_spher[i].setOpts(x=urdf[i][0], height=urdf[i][1])
                 '''if (i == 0 or i == 3 or i == 6) and not urdf[i][0].size == 0:
                     self.widget_dict[i].setXRange(np.min(urdf[i][0] - 0.01), np.max(urdf[i][0] + 0.01))'''
