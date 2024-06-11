@@ -235,7 +235,7 @@ def tca_filter(surface_c, surface_e, shift_c):
     return filtered
 
 
-def select_atom(surface_c, surface_e, local_c, local_e, rpath):
+def select_atom(surface_c, surface_e, local_c, local_e, rpath, nearest=False):
     coordinate = []
     dist = []
     element = []
@@ -252,6 +252,8 @@ def select_atom(surface_c, surface_e, local_c, local_e, rpath):
         temp -= temp[0]
         temp_d = np.array([sqrt((temp[_] ** 2).sum()) for _ in range(local_e.size, temp.shape[0])])
         align = np.append(np.arange(local_e.size), np.argsort(temp_d) + local_e.size)
+        if nearest:
+            align = align[:local_e.size + 1]
         adsorb = np.append(adsorb, temp_index[np.argsort(temp_d)[0]])
         coordinate.append(temp[align])
         element.append(temp_ele[align])
@@ -324,7 +326,7 @@ def plot_Al2O3(coor, ele, graph):
 
 def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
     item_scatter = np.array([])
-    item_cylinder = []
+    item_cylinder = np.array([])
     color = ['brown', 'yellow', 'green', 'orange', 'cyan', 'red', 'purple']
     for i in range(local_c.shape[0]):
         for j in range(local_c.shape[1]):
@@ -332,7 +334,6 @@ def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
                                                            local_c[i][j][2], c=color[j], alpha=1, scale=0.3))
             graph.addItem(item_scatter[-1])
 
-        item_cylinder_rep = np.array([])
         dist = np.array([])
         add_list = np.array([], dtype=int)
         for j in range(surface_e.size):
@@ -340,18 +341,17 @@ def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
                 dist = np.append(dist, sqrt(((local_c[i][0] - surface_c[j]) ** 2).sum()))
                 add_list = np.append(add_list, j)
         nearest = add_list[np.argmin(dist)]
-        item_cylinder_rep = np.append(item_cylinder_rep, cylinder([local_c[i][0][0], surface_c[nearest][0]],
+        item_cylinder = np.append(item_cylinder, cylinder([local_c[i][0][0], surface_c[nearest][0]],
                                                                   [local_c[i][0][1], surface_c[nearest][1]],
                                                                   [local_c[i][0][2], surface_c[nearest][2]],
-                                                                  c='black', alpha=1, width=0.05))
-        #graph.addItem(item_cylinder_rep[-1])
+                                                                  c='black', alpha=1, width=0.1))
+        graph.addItem(item_cylinder[-1])
         for j in range(1, local_c.shape[1]):
-            item_cylinder_rep = np.append(item_cylinder_rep, cylinder([local_c[i][0][0], local_c[i][j][0]],
+            item_cylinder = np.append(item_cylinder, cylinder([local_c[i][0][0], local_c[i][j][0]],
                                                                       [local_c[i][0][1], local_c[i][j][1]],
                                                                       [local_c[i][0][2], local_c[i][j][2]],
-                                                                      c='black', alpha=1, width=0.05))
-            #graph.addItem(item_cylinder_rep[-1])
-        item_cylinder.append(item_cylinder_rep)
+                                                                      c='black', alpha=1, width=0.1))
+            graph.addItem(item_cylinder[-1])
     # item_scatter = item_scatter.reshape(local_c.shape[0], local_c.shape[1])
     # graph.addItem(cylinder([rep[0][0], rep[1][0]], [rep[0][1], rep[1][1]],
     # [rep[0][2], rep[1][2]], c='red', width=0.05))
@@ -361,20 +361,20 @@ def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
 def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
     if select.size == 0:
         select = np.arange(len(ele))
-    sym = np.append(sym, 'Ol')
+    #sym = np.append(sym, 'Ol')
     size = sym.size if sym.size <= 3 else 3
     sym_dict = {sym[_]: _ for _ in range(size)}
-    stat_d = [np.array([])] * (sym.size + 2)
-    stat_a = [np.array([])] * (sym.size + 2)
-    stat_e = [np.array([])] * (sym.size + 2)
+    stat_d = [np.array([])] * (sym.size)
+    stat_a = [np.array([])] * (sym.size)
+    stat_e = [np.array([])] * (sym.size)
     label = [np.array([], dtype=int)] * sym.size
 
     for rep in select:
         for i in range(1, ele[rep].size):
-            if ele[rep][i] == 'O' and dist[rep][i] > 2:
+            '''if ele[rep][i] == 'O' and dist[rep][i] > 2:
                 locate = 2
-            else:
-                locate = sym_dict[ele[rep][i]]
+            else:'''
+            locate = sym_dict[ele[rep][i]]
             label[locate] = np.append(label[locate], rep)
             if not coor[rep][i][0] == 0:
                 azi = abs(round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0))
@@ -386,7 +386,7 @@ def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
             stat_a[locate] = np.append(stat_a[locate], azi)
             stat_e[locate] = np.append(stat_e[locate], round(polar if polar < 90 else (180 - polar), 0))
             stat_d[locate] = np.append(stat_d[locate], round(dist[rep][i], 2))
-            if ele[rep][i] == 'O':
+            '''if ele[rep][i] == 'O':
                 if dist[rep][i] > 2:
                     stat_a[-1] = np.append(stat_a[-1], azi)
                     stat_e[-1] = np.append(stat_e[-1], round(polar if polar < 90 else (180 - polar), 0))
@@ -394,13 +394,13 @@ def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
                 elif dist[rep][i] <= 2:
                     stat_a[-2] = np.append(stat_a[-2], azi)
                     stat_e[-2] = np.append(stat_e[-2], round(polar if polar < 90 else (180 - polar), 0))
-                    stat_d[-2] = np.append(stat_d[-2], round(dist[rep][i], 2))
-    print('O1:%.3f-%.3f, %.1f-%.1f, %.1f-%.1f' % (stat_d[-2].mean(), stat_d[-2].std(),
+                    stat_d[-2] = np.append(stat_d[-2], round(dist[rep][i], 2))'''
+    '''print('O1:%.3f-%.3f, %.1f-%.1f, %.1f-%.1f' % (stat_d[-2].mean(), stat_d[-2].std(),
                                                   stat_a[-2].mean(), stat_a[-2].std(),
                                                   stat_e[-2].mean(), stat_e[-2].std()))
     print('O2:%.3f-%.3f, %.1f-%.1f, %.1f-%.1f' % (stat_d[-1].mean(), stat_d[-1].std(),
                                                   stat_a[-1].mean(), stat_a[-1].std(),
-                                                  stat_e[-1].mean(), stat_e[-1].std()))
+                                                  stat_e[-1].mean(), stat_e[-1].std()))'''
 
         # bond_angle = np.append(bond_angle, 180 - cal_angle(coor[i][1], coor[i][0], coor[i][2]))
     rdf = [stat_d[0], stat_a[0], stat_e[0]]
@@ -428,7 +428,7 @@ def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
     return rdf, label
 
 
-def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph):
+def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph, nearest=False):
     color = ['brown', 'yellow', 'purple', 'green', 'orange', 'cyan', 'red']
     # color = ['blue', 'yellow', 'red', 'red', 'red', 'red', 'red']
     graph.addItem(scatter(0, 0, 0, c=color[0], scale=0.3))
@@ -447,9 +447,14 @@ def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph):
                 c = color[2] if np.sqrt((temp**2).sum()) < 2 else color[3]
             item_rep = np.append(item_rep, scatter(temp[0], temp[1], temp[2], c=c, scale=0.3))
             graph.addItem(item_rep[-1])
+        select = []
         if not surface == '':
             for j in range(surface_e.size):
                 if sqrt(((surface_c[j] - local_c[i][0]) ** 2).sum()) < rpath[surface_e[j]]:
+                    select.append(j)
+            select = np.array([select[np.argmin(
+                np.array([sqrt(((surface_c[j] - local_c[i][0]) ** 2).sum()) for j in select]))]] if nearest else select)
+            for j in select:
                     temp = surface_c[j] - local_c[i][0]
                     if surface_e[j] == 'O':
                         c = 'purple' if surface == 'TiO2' and surface_c[j][2] > 0 else 'red'

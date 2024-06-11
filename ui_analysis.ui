@@ -940,7 +940,7 @@
      <x>0</x>
      <y>0</y>
      <width>1280</width>
-     <height>23</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="fileMenu">
@@ -972,9 +972,18 @@
     <addaction name="neighborAction"/>
     <addaction name="regionAction"/>
    </widget>
+   <widget class="QMenu" name="menuploting">
+    <property name="title">
+     <string>ploting</string>
+    </property>
+    <addaction name="plot_rdfAction"/>
+    <addaction name="plot_chiAction"/>
+    <addaction name="plot_baAction"/>
+   </widget>
    <addaction name="fileMenu"/>
    <addaction name="rangeMenu"/>
    <addaction name="optionMenu"/>
+   <addaction name="menuploting"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="readAction">
@@ -1112,6 +1121,21 @@
   <action name="outputAction">
    <property name="text">
     <string>output...</string>
+   </property>
+  </action>
+  <action name="plot_rdfAction">
+   <property name="text">
+    <string>rdf</string>
+   </property>
+  </action>
+  <action name="plot_chiAction">
+   <property name="text">
+    <string>chi</string>
+   </property>
+  </action>
+  <action name="plot_baAction">
+   <property name="text">
+    <string>bond angle</string>
    </property>
   </action>
  </widget>

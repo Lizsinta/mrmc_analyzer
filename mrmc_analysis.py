@@ -36,31 +36,39 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.rota.customContextMenuRequested.connect(self.save_3d_menu)
 
 
-
+        fn = QFont()
+        fn.setPointSize(12)
+        fn.setBold(True)
+        labelStyle = {'color': '#000000', 'font-size': '25t'}
         self.plotx = pg.PlotWidget(background=(255, 255, 255, 255))
         self.plotx.setTitle('χ(k) [001]', color='#000000', size='20pt')
-        self.plotx.setLabel('left', 'χ(k)')
-        self.plotx.setLabel('bottom', 'k', unit='Å-1')
+        #self.plotx.setLabel('left', 'χ(k)')
+        self.plotx.getAxis('left').setLabel(text='χ(k)', unit='10nm$^-1$', **labelStyle)
+        self.plotx.getAxis('bottom').setLabel(text='k', unit='Å-1', **labelStyle)
         self.plotx.addLegend((0, 0), labelTextSize='12pt', labelTextColor='k')
         self.chixLayout.addWidget(self.plotx)
         self.ploty = pg.PlotWidget(background=(255, 255, 255, 255))
         self.ploty.setTitle('χ(k) [1-10]', color='#000000', size='20pt')
-        self.ploty.setLabel('left', 'χ(k)')
-        self.ploty.setLabel('bottom', 'k', unit='Å-1')
+        self.ploty.getAxis('left').setLabel(text='χ(k)', **labelStyle)
+        self.ploty.getAxis('bottom').setLabel(text='k', unit='Å-1', **labelStyle)
         self.ploty.addLegend((0, 0), labelTextSize='12pt', labelTextColor='k')
         self.chiyLayout.addWidget(self.ploty)
         self.plotz = pg.PlotWidget(background=(255, 255, 255, 255))
         self.plotz.setTitle('χ(k) [110]', color='#000000', size='20pt')
-        self.plotz.setLabel('left', 'χ(k)')
-        self.plotz.setLabel('bottom', 'k', unit='Å-1')
+        self.plotz.getAxis('left').setLabel(text='χ(k)', **labelStyle)
+        self.plotz.getAxis('bottom').setLabel(text='k', unit='Å-1', **labelStyle)
         self.plotz.addLegend((0, 0), labelTextSize='12pt', labelTextColor='k')
         self.chizLayout.addWidget(self.plotz)
         self.widget_plot = {0: self.plotx, 1: self.ploty, 2: self.plotz}
         self.rota.setSizePolicy(self.plotz.sizePolicy())
         self.subs.setSizePolicy(self.plotz.sizePolicy())
+        for i in range(3):
+            self.widget_plot[i].getAxis('bottom').setTickFont(fn)
+            self.widget_plot[i].getAxis('bottom').setTextPen('black')
+            self.widget_plot[i].getAxis('left').setTickFont(fn)
+            self.widget_plot[i].getAxis('left').setTextPen('black')
 
-        fn = QFont()
-        fn.setPointSize(15)
+
         # xy label
         self.do = pg.PlotWidget(background=(255, 255, 255, 255))
         self.Ao = pg.PlotWidget(background=(255, 255, 255, 255))
@@ -93,11 +101,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.widget_dict[i].getAxis('bottom').setTextPen('black')
             self.widget_dict[i].getAxis('left').setTickFont(fn)
             self.widget_dict[i].getAxis('left').setTextPen('black')
-            self.widget_dict[i].setLabel('left', 'count')
+            self.widget_dict[i].getAxis('left').setLabel(text='count', **labelStyle)
             if i == 0 or i == 3 or i == 6:
-                self.widget_dict[i].setLabel('bottom', 'distance', unit='Å')
+                self.widget_dict[i].getAxis('bottom').setLabel(text='distance', unit='Å', **labelStyle)
             else:
-                self.widget_dict[i].setLabel('bottom', 'angle', unit='°')
+                self.widget_dict[i].getAxis('bottom').setLabel(text='angle', unit='°', **labelStyle)
             self.layout_dict[i].addWidget(self.widget_dict[i])
 
         self.do.setTitle('R', color='#000000', size='20pt')
@@ -122,6 +130,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.readAction.triggered.connect(self.read)
         self.saveAction.triggered.connect(self.save)
         self.outputAction.triggered.connect(self.output)
+        self.plot_rdfAction.triggered.connect(self.save_matplotlib_action)
+        self.plot_chiAction.triggered.connect(self.save_matplotlib_action)
+        self.plot_baAction.triggered.connect(self.save_matplotlib_action)
         self.rfSlider.valueChanged.connect(self.rf_filter)
         self.folder = ''
         self.rangeMenu.setEnabled(False)
@@ -145,10 +156,55 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.rep = self.local_c.shape[0]
         self.current_rep = np.arange(self.rep)
 
+    def read(self):
+        address = self.folder.split(self.folder.split('/')[-1])[0] if not self.folder == '' \
+            else r'D:/CuAlO'#r'C:/Monte Carlo/cuos/substrate'
+        folder = QFileDialog.getExistingDirectory(self, 'select folder...', address)
+        if folder == '':
+            return
+
+        self.clear()
+        self.folder = folder
+        k, r, dw, dE = self.load_info()
+        weight, s0, ms, f_material, surface_file, surface_range = self.load_inp(k, r)
+        self.load_rep()
+        '''for i in range(self.rep):
+            if self.local_c[i][1][0] < 0:
+                self.local_c[i][1][0] = -self.local_c[i][1][0]
+            if self.local_c[i][2][0] > 0:
+                self.local_c[i][2][0] = -self.local_c[i][2][0]'''
+        self.load_atom()
+        chi_sum = self.cal_spectrum(f_material, dw, dE, s0, ms, weight)
+        self.cal_rdf()
+
+        '''shift_c = self.local_c.copy()
+        if not self.surface == '':
+            for rep in range(self.rep):
+                shift_c[rep] = self.local_c[rep] - self.surface_c[self.adsorb[rep]] + self.surface_c[41]
+        else:
+            for rep in range(self.rep):
+                self.local_c[rep] = self.local_c[rep][[0, 2, 1], :]'''
+
+        self.item_r = plot_rotate(self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath, self.surface,
+                                  self.rota)
+
+        '''if self.surface == '':
+            for rep in range(self.rep):
+                shift_c[rep] = self.local_c[rep] - self.local_c[rep][2] + self.surface_c[41]
+            shift_c = shift_c[:, :2, :]
+            self.local_e = self.local_e[[0, 2]]
+            self.local_size = self.local_e.size'''
+
+        if not self.surface == '':
+            self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, self.local_c, self.rpath, self.subs)
+
+        self.set_plot(chi_sum)
+        self.setWindowTitle('mRMC (%s)' % self.folder)
 
     def load_exp(self, file_list, k, r):
         exp_name = np.asarray(file_list)
         self.exp = np.array([EXP(exp_name[i], k[0], k[1], r[0], r[1]) for i in range(exp_name.size)])
+
         if exp_name.size == 1:
             self.plotx.setTitle('χ(k)', color='#000000', size='20pt')
             self.ploty.setTitle('', color='#000000', size='20pt')
@@ -452,7 +508,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         urdf = [np.unique(self.rdf[_], return_counts=True) for _ in range(graph_size)]
         self.bar_spher = [bar(urdf[_][0], urdf[_][1], width=0.5) for _ in range(graph_size)]
 
-        ba = np.array([180 - cal_angle(self.select_c[_, 1, :], np.zeros(3), self.select_c[_, 2, :]) for _ in range(self.rep)])
+        '''ba = np.array([180 - cal_angle(self.select_c[_, 1, :], np.zeros(3), self.select_c[_, 2, :]) for _ in range(self.rep)])
         if self.select_c.shape[1] > 3:
             ba = np.append(ba, np.array([
                 180 - cal_angle(self.select_c[_, 1, :], np.zeros(3), self.select_c[_, 3, :]) for _ in range(self.rep)]))
@@ -475,7 +531,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.ba.setLabel('left', 'count')
         self.ba.setLabel('bottom', 'angle', unit='Å')
         self.ba.setTitle('S-Cu-O angle', color='#000000', size='30pt')
-        print('%.1f-%.1f' % (ba.mean(), ba.std()))
+        print('%.1f-%.1f' % (ba.mean(), ba.std()))'''
 
 
         '''third_ele = True if graph_size > 6 else False
@@ -538,54 +594,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.region_line.sigRegionChanged.connect(lambda: self.update(False))
         self.rangeMenu.setEnabled(True)
-
-    def read(self):
-        address = self.folder.split(self.folder.split('/')[-1])[0] if not self.folder == '' \
-            else r'D:/CuAlO'#r'C:/Monte Carlo/cuos/substrate'
-        folder = QFileDialog.getExistingDirectory(self, 'select folder...', address)
-        if folder == '':
-            return
-
-        self.clear()
-        self.folder = folder
-        k, r, dw, dE = self.load_info()
-        weight, s0, ms, f_material, surface_file, surface_range = self.load_inp(k, r)
-        self.load_rep()
-        '''for i in range(self.rep):
-            if self.local_c[i][1][0] < 0:
-                self.local_c[i][1][0] = -self.local_c[i][1][0]
-            if self.local_c[i][2][0] > 0:
-                self.local_c[i][2][0] = -self.local_c[i][2][0]'''
-        self.load_atom()
-        chi_sum = self.cal_spectrum(f_material, dw, dE, s0, ms, weight)
-        self.cal_rdf()
-
-
-        '''shift_c = self.local_c.copy()
-        if not self.surface == '':
-            for rep in range(self.rep):
-                shift_c[rep] = self.local_c[rep] - self.surface_c[self.adsorb[rep]] + self.surface_c[41]
-        else:
-            for rep in range(self.rep):
-                self.local_c[rep] = self.local_c[rep][[0, 2, 1], :]'''
-
-
-        self.item_r = plot_rotate(self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath, self.surface,
-                                  self.rota)
-
-        '''if self.surface == '':
-            for rep in range(self.rep):
-                shift_c[rep] = self.local_c[rep] - self.local_c[rep][2] + self.surface_c[41]
-            shift_c = shift_c[:, :2, :]
-            self.local_e = self.local_e[[0, 2]]
-            self.local_size = self.local_e.size'''
-
-        if not self.surface == '':
-            self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, self.local_c, self.rpath, self.subs)
-
-        self.set_plot(chi_sum)
-        self.setWindowTitle('mRMC (%s)' % self.folder)
-
+        self.plot_rdfAction.setEnabled(True)
+        self.plot_chiAction.setEnabled(True)
 
     def save(self):
         address = self.folder if not self.folder == '' else os.getcwd()
@@ -787,8 +797,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if not self.surface == '':
                     for j in range(self.local_size):
                         self.subs.removeItem(self.item_s[i * self.local_size + j])
-                    '''for j in range(self.item_c[i].size):
-                        self.subs.removeItem(self.item_c[i][j])'''
+                        self.subs.removeItem(self.item_c[i * 2 + j])
                 for j in range(self.item_r[i].size):
                     self.rota.removeItem(self.item_r[i][j])
                 for pol in range(self.exp.size):
@@ -800,8 +809,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if not self.surface == '':
                     for j in range(self.local_size):
                         self.subs.addItem(self.item_s[i * self.local_size + j])
-                    '''for j in range(self.item_c[i].size):
-                        self.subs.addItem(self.item_c[i][j])'''
+                        self.subs.addItem(self.item_c[i * 2 + j])
                 for j in range(self.item_r[i].size):
                     self.rota.addItem(self.item_r[i][j])
                 for pol in range(self.exp.size):
@@ -821,7 +829,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             urdf = [np.unique(rdf[_], return_counts=True) for _ in range(graph_size)]
             # urdf[self.range_target] = np.unique(self.rdf[self.range_target], return_counts=True)
 
-            ba = np.array(
+            '''ba = np.array(
                 [180 - cal_angle(self.select_c[_, 1, :], np.zeros(3), self.select_c[_, 2, :]) for _ in self.current_rep])
             if self.select_c.shape[1] > 3:
                 ba = np.append(ba, np.array([
@@ -830,7 +838,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             ba = ba[np.where(ba > 130)[0]]
             urdf_ba = np.unique(np.round(ba, 0), return_counts=True)
             self.ba_bar.setOpts(x=urdf_ba[0], height=urdf_ba[1])
-            print('%.1f-%.1f' % (ba.mean(), ba.std()))
+            print('%.1f-%.1f' % (ba.mean(), ba.std()))'''
 
             for i in range(graph_size):
                 if i < 6 and self.current_rep.size > 0:
@@ -847,6 +855,69 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.line_aver[i].setData(x=self.exp[0].k, y=chi)
                     self.r_factor_temp[i] = self.exp[i].r_factor_chi(chi)
                     self.widget_plot[i].plotItem.legend.items[0][1].setText('%.3f' % self.r_factor_temp[i])
+
+    def save_matplotlib_action(self):
+        target = self.sender()
+        if target.objectName() == 'plot_rdfAction':
+            graph_size = 0
+            if self.current_rep.size > 0:
+                rdf, label = rdf_polarization(self.select_c, self.select_d, self.select_e, self.symbol,
+                                              select=self.current_rep)
+                for i in rdf:
+                    if i.size > 0:
+                        graph_size += 1
+            urdf = [np.unique(rdf[_], return_counts=True) for _ in range(graph_size)]
+            ax = np.array([plt.subplot(graph_size // 3, 3, _ + 1) for _ in range(graph_size)])
+            urdf0 = [np.unique(self.rdf[_], return_counts=True) for _ in range(graph_size)]
+            for i in range(graph_size):
+                ax[i].bar(urdf[i][0], urdf[i][1], align='center', width=0.005 if i % 3 == 0 else 0.5, color='k')
+                ax[i].set_xlabel('distance/Å' if i % 3 == 0 else 'angle/°')
+                ax[i].set_ylabel('count')
+                #ax[i].set_xlim(np.min(urdf0[i][0])-(0.01 if i % 3 == 0 else 1), np.max(urdf0[i][0])+(0.01 if i % 3 == 0 else 1))
+                ax[i].set_ylim(0, np.max(urdf0[i][1])*1.1)
+                ax[i].text(0.05, 0.8, self.rdf_name[i], fontsize=14, transform=ax[i].transAxes)
+            plt.tight_layout()
+            plt.subplots_adjust(hspace=0.42, wspace=0.3)
+        elif target.objectName() == 'plot_chiAction':
+            plt.figure(figsize=(5, 10))
+            ax = np.array([plt.subplot(3, 1, _ + 1) for _ in range(3)])
+            title = ['E//[001]', 'E//[1-10]', 'E//[110]']
+            if self.current_rep.size > 0:
+                for i in range(self.exp.size):
+                    chi = np.sum(self.chi[i][self.current_rep], axis=0) / self.current_rep.size
+                    self.line_aver[i].setData(x=self.exp[0].k, y=chi)
+                    self.r_factor_temp[i] = self.exp[i].r_factor_chi(chi)
+                    self.widget_plot[i].plotItem.legend.items[0][1].setText('%.3f' % self.r_factor_temp[i])
+                    ax[i].plot(self.exp[i].k[0:1], self.chi[i][0][0:1], c='b', linestyle='--', label='replica χ(k)')
+                    for j in self.current_rep:
+                        ax[i].plot(self.exp[i].k, self.chi[i][j], c='b', linestyle='--', alpha=0.05)
+                    ax[i].plot(self.exp[i].k, chi, c='r', label='average χ(k)', linewidth=2.5)
+                    ax[i].plot(self.exp[i].k, self.exp[i].chi, c='k', label='experiment χ(k)', linewidth=2.5)
+                    ax[i].legend(loc='upper right')
+                    ax[i].text(0.05, 0.9, title[i], fontsize=18, transform=ax[i].transAxes)
+                    ax[i].set_xlabel('k/$Å^{-1}$', fontsize=18)
+                    ax[i].set_ylabel('χ(k)', fontsize=18)
+                    ax[i].tick_params(axis='both', labelsize=18)
+                    ax[i].set_xlim(self.exp[i].k[0], self.exp[i].k[-1])
+                    ax[i].set_ylim(np.min(self.chi[:, self.current_rep]) * 1.1, np.max(self.chi[:, self.current_rep]) * 1.1)
+                    for j in range(int(self.exp[i].k[0])+1, int(self.exp[i].k[-1])+1):
+                        ax[i].plot([j, j], [np.min(self.chi[:, self.current_rep])*1.1, np.max(self.chi[:, self.current_rep])*1.1], c='k', alpha=0.4, linestyle='--')
+                plt.tight_layout()
+                #plt.subplots_adjust(hspace=0.4, wspace=0.3)
+        elif target.objectName() == 'plot_baAction':
+            ba = np.array([])
+            for rep in self.current_rep:
+                angle = cal_angle(self.select_c[rep][1], self.select_c[rep][0], self.select_c[rep][2])
+                ba = np.append(ba, angle if angle > 90 else (180 - angle))
+            urdf = np.unique(np.round(ba, 0), return_counts=True)
+            ax = plt.subplot()
+            ax.bar(urdf[0], urdf[1], align='center', width=0.5, color='k')
+            ax.set_xlabel('angle/°')
+            ax.set_ylabel('count')
+            ax.text(0.05, 0.8, 'S-Cu-O', fontsize=14, transform=ax.transAxes)
+            ax.set_ylim(0, np.max(urdf[1]) * 1.1)
+            plt.tight_layout()
+        plt.show()
 
     def save_3d_menu(self, pos):
         target = self.sender()
