@@ -24,7 +24,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.subs = gl.GLViewWidget()
         self.subs.setObjectName('subs')
-        init_3dplot(self.subs, grid=False, view=30, title='substrate')
+        init_3dplot(self.subs, grid=False, view=30, title='substrate', ortho=True)
         self.g3dLayout.addWidget(self.subs)
         self.rota = gl.GLViewWidget()
         self.rota.setObjectName('rota')
@@ -168,6 +168,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         k, r, dw, dE = self.load_info()
         weight, s0, ms, f_material, surface_file, surface_range = self.load_inp(k, r)
         self.load_rep()
+
         '''for i in range(self.rep):
             if self.local_c[i][1][0] < 0:
                 self.local_c[i][1][0] = -self.local_c[i][1][0]
@@ -186,7 +187,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.local_c[rep] = self.local_c[rep][[0, 2, 1], :]'''
 
         self.item_r = plot_rotate(self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath, self.surface,
-                                  self.rota)
+                                  self.rota, nearest=True)
 
         '''if self.surface == '':
             for rep in range(self.rep):
@@ -196,7 +197,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.local_size = self.local_e.size'''
 
         if not self.surface == '':
-            self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, self.local_c, self.rpath, self.subs)
+            self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, self.local_c, self.rpath, self.subs, shift=False)
 
         self.set_plot(chi_sum)
         self.setWindowTitle('mRMC (%s)' % self.folder)
@@ -866,6 +867,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 for i in rdf:
                     if i.size > 0:
                         graph_size += 1
+            #graph_size -= 3
             urdf = [np.unique(rdf[_], return_counts=True) for _ in range(graph_size)]
             ax = np.array([plt.subplot(graph_size // 3, 3, _ + 1) for _ in range(graph_size)])
             urdf0 = [np.unique(self.rdf[_], return_counts=True) for _ in range(graph_size)]
@@ -873,6 +875,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 ax[i].bar(urdf[i][0], urdf[i][1], align='center', width=0.005 if i % 3 == 0 else 0.5, color='k')
                 ax[i].set_xlabel('distance/Å' if i % 3 == 0 else 'angle/°')
                 ax[i].set_ylabel('count')
+                '''if not i % 3 == 0:
+                    ax[i].set_xlim(0, 90)
+                else:
+                    ax[i].set_xlim(np.min(urdf0[0][0]) - 0.01, np.max(urdf0[0][0]) + 0.01)'''
                 #ax[i].set_xlim(np.min(urdf0[i][0])-(0.01 if i % 3 == 0 else 1), np.max(urdf0[i][0])+(0.01 if i % 3 == 0 else 1))
                 ax[i].set_ylim(0, np.max(urdf0[i][1])*1.1)
                 ax[i].text(0.05, 0.8, self.rdf_name[i], fontsize=14, transform=ax[i].transAxes)

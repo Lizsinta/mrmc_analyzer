@@ -277,12 +277,12 @@ def plot_TiO2(coor, ele, graph, local=False):
     index = np.arange(ele.size, dtype=int) if not local else np.array([], dtype=int)
     for i in range(ele.size):
         if ele[i] == 'Ti':
-            color = 'grey'
+            color = 'purple'
         else:
-            if coor[i][2] > 0:
-                color = 'purple'
-            else:
+            if coor[i][2] > 0.5:
                 color = 'red'
+            else:
+                color = 'orange'
         size = 0.6 if ele[i] == 'O' else 0.4
         if local:
             if abs(coor[i][0] - coor[42][0]) <= 2.95 and abs(coor[i][1] - coor[42][1]) <= 4 and abs(
@@ -324,16 +324,12 @@ def plot_Al2O3(coor, ele, graph):
     graph.addItem(line([0, 0], [0, 0], [-5, 5], c='blue', width=3))
 
 
-def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
+def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph, shift=False):
     item_scatter = np.array([])
     item_cylinder = np.array([])
-    color = ['brown', 'yellow', 'green', 'orange', 'cyan', 'red', 'purple']
+    color = ['blue', 'yellow', 'green', 'orange', 'cyan', 'red', 'purple']
+    inplane = 0
     for i in range(local_c.shape[0]):
-        for j in range(local_c.shape[1]):
-            item_scatter = np.append(item_scatter, scatter(local_c[i][j][0], local_c[i][j][1],
-                                                           local_c[i][j][2], c=color[j], alpha=1, scale=0.3))
-            graph.addItem(item_scatter[-1])
-
         dist = np.array([])
         add_list = np.array([], dtype=int)
         for j in range(surface_e.size):
@@ -341,6 +337,16 @@ def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
                 dist = np.append(dist, sqrt(((local_c[i][0] - surface_c[j]) ** 2).sum()))
                 add_list = np.append(add_list, j)
         nearest = add_list[np.argmin(dist)]
+        if surface_c[nearest][2] < 0.5:
+            inplane += 1
+        center = 25
+        if shift:
+            local_c[i] -= (surface_c[nearest] - surface_c[center])
+            nearest = center
+        for j in range(local_c.shape[1]):
+            item_scatter = np.append(item_scatter, scatter(local_c[i][j][0], local_c[i][j][1],
+                                                           local_c[i][j][2], c=color[j], alpha=1, scale=0.4))
+            graph.addItem(item_scatter[-1])
         item_cylinder = np.append(item_cylinder, cylinder([local_c[i][0][0], surface_c[nearest][0]],
                                                                   [local_c[i][0][1], surface_c[nearest][1]],
                                                                   [local_c[i][0][2], surface_c[nearest][2]],
@@ -355,10 +361,11 @@ def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph):
     # item_scatter = item_scatter.reshape(local_c.shape[0], local_c.shape[1])
     # graph.addItem(cylinder([rep[0][0], rep[1][0]], [rep[0][1], rep[1][1]],
     # [rep[0][2], rep[1][2]], c='red', width=0.05))
+    print('inplane:',inplane)
     return item_scatter, item_cylinder
 
 
-def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
+def rdf_polarization(coor, dist, ele, sym, select=np.array([]), rotate=True):
     if select.size == 0:
         select = np.arange(len(ele))
     #sym = np.append(sym, 'Ol')
@@ -377,8 +384,13 @@ def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
             locate = sym_dict[ele[rep][i]]
             label[locate] = np.append(label[locate], rep)
             if not coor[rep][i][0] == 0:
-                azi = abs(round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0))
-                azi = azi if azi < 90 else 180 - azi
+                if not rotate:
+                    azi = round(atan(coor[rep][i][1] / abs(coor[rep][i][0])) / pi * 180, 0)
+                    azi = 180 - azi if coor[rep][i][0] < 0 else azi
+                    azi = azi + 360 if azi < 0 else azi
+                else:
+                    azi = abs(round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0))
+                    azi = azi if azi < 90 else 180 - azi
                 #azi = round(atan(coor[rep][i][1] / coor[rep][i][0]) / pi * 180, 0)
             else:
                 azi = 90
@@ -429,7 +441,7 @@ def rdf_polarization(coor, dist, ele, sym, select=np.array([])):
 
 
 def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph, nearest=False):
-    color = ['brown', 'yellow', 'purple', 'green', 'orange', 'cyan', 'red']
+    color = ['blue', 'yellow', 'purple', 'green', 'orange', 'cyan', 'red']
     # color = ['blue', 'yellow', 'red', 'red', 'red', 'red', 'red']
     graph.addItem(scatter(0, 0, 0, c=color[0], scale=0.3))
     graph.addItem(line([-3, 3], [0, 0], [0, 0], c='r'))
@@ -456,8 +468,9 @@ def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph, n
                 np.array([sqrt(((surface_c[j] - local_c[i][0]) ** 2).sum()) for j in select]))]] if nearest else select)
             for j in select:
                     temp = surface_c[j] - local_c[i][0]
+
                     if surface_e[j] == 'O':
-                        c = 'purple' if surface == 'TiO2' and surface_c[j][2] > 0 else 'red'
+                        c = 'red' if surface == 'TiO2' and surface_c[j][2] > 0 else 'orange'
                     else:
                         if surface_e[j] == 'Al':
                             if surface_c[j][2] < 0:
@@ -467,7 +480,7 @@ def plot_rotate(surface_c, surface_e, local_c, local_e, rpath, surface, graph, n
                             else:
                                 c = 'lightgray'
                         else:
-                            c = 'silver'
+                            c = 'purple'
                     item_rep = np.append(item_rep, scatter(temp[0], temp[1], temp[2], c=c, scale=0.3))
                     graph.addItem(item_rep[-1])
         item_list.append(item_rep)
