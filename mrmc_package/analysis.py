@@ -189,32 +189,41 @@ def load_substrate(f_rep, local_size):
         return coordinate_substrate[:surface_size], ele_substrate[:surface_size]
 
 
-def tca_filter(surface_c, surface_e, shift_c):
-    y1 = -1.93
-    y2l = -6.45
+def tca_filter(surface_c, surface_e, local_c):
+    x1 = 0.35
+    y1 = -1.97
+    rx_oh = 4.6
     rx = 4.95
-    rxl = 6.09
-    elevation = 65 / 180 * pi
-    center = np.array([-0.52, y1])
-    filtered = np.array([False] * shift_c.shape[0])
+    rxl = 5.05
+    y2 = y1 - rx_oh
+    #elevation = 65 / 180 * pi
+    center_n = np.array([-x1, y1])
+    center_p = np.array([x1, y1])
+    filtered = np.array([False] * local_c.shape[0])
     index = np.array([], dtype=int)
     coor_rot = np.zeros(2)
-    '''for i in range(len(coor)):
-        coordinate = coor[i][-2].copy()
+    inplane = []
+    for i in range(local_c.shape[0]):
+        coordinate = []
         ne = np.array([], dtype=int)
-        for j in range(ele.size - 2):
-            if ele[j] == 'O' and sqrt(((coor[i][-2] - substrate[j]) ** 2).sum()) < 2.4:
-                coordinate = np.vstack((coordinate, substrate[j]))
+        for j in range(surface_e.size):
+            if surface_e[j] == 'O' and sqrt(((local_c[i][0] - surface_c[j]) ** 2).sum()) < 2.8:
+                coordinate.append(surface_c[j])
                 ne = np.append(ne, j)
+        coordinate = np.asarray(coordinate)
         k = np.argmin(
-            np.array([sqrt(((coordinate[_] - coor[i][-2]) ** 2).sum()) for _ in range(1, coordinate.shape[0])]))
-        coor[i][-2] -= (substrate[ne[k]] - substrate[45])
-        coor[i][-1] -= (substrate[ne[k]] - substrate[45])'''
+            np.array([sqrt(((coordinate[_] - local_c[i][0]) ** 2).sum()) for _ in range(coordinate.shape[0])]))
+        if surface_c[ne[k]][2] < 1:
+            local_c[i] -= (surface_c[ne[k]] - surface_c[42])
+            inplane.append(i)
+        else:
+            local_c[i] -= (surface_c[ne[k]] - surface_c[41])
+    inplane = np.array(inplane)
     for i in range(surface_e.size):
         if surface_e[i] == 'Ti' and (surface_c[i][1] == -13.011 or abs(surface_c[i][1]) == 6.505 or surface_c[i][1] == 0):
             index = np.append(index, i)
-    for i in range(shift_c.shape[0]):
-        temp = shift_c[i][1].copy()
+    for i in range(local_c.shape[0]):
+        temp = local_c[i][1:].copy()
         for j in index:
             # if sqrt(((coor[0][j] - temp[0]) ** 2).sum()) < 7 and sqrt((coor[0][j][1] - temp[0][1]) ** 2) < 3.253:
             temp = np.vstack((temp, surface_c[j]))
@@ -226,12 +235,21 @@ def tca_filter(surface_c, surface_e, shift_c):
                 azi += pi
             coor_rot[0] = temp[j][0] * cos(azi) + temp[j][1] * sin(azi)
             coor_rot[1] = temp[j][2]
-            if y2l < coor_rot[1] < y1:
-                vect = coor_rot - center
-                if rx < sqrt((vect ** 2).sum()) < rxl:
-                    if 0 < -atan(vect[1] / vect[0]) < elevation:
+            if y2 < coor_rot[1] < y1:
+                vect_n = coor_rot - center_n
+                vect_p = coor_rot - center_p
+                angle = abs(cal_angle(local_c[i][0], local_c[i][1], temp[j]+np.array([0, 0, 2])))
+                if sqrt((vect_n ** 2).sum()) > rx_oh > sqrt((vect_p ** 2).sum()):
+                    if angle > 57:
                         filtered[i] = True
                         break
+                elif sqrt((vect_n ** 2).sum()) > rx and sqrt((vect_p ** 2).sum()) < rxl:
+                    if angle > 47:
+                        filtered[i] = True
+                        break
+
+
+    #filtered[inplane] = False
     return filtered
 
 
@@ -337,9 +355,10 @@ def plot_on_substrate(surface_c, surface_e, local_c, rpath, graph, shift=False):
                 dist = np.append(dist, sqrt(((local_c[i][0] - surface_c[j]) ** 2).sum()))
                 add_list = np.append(add_list, j)
         nearest = add_list[np.argmin(dist)]
+        center = 41
         if surface_c[nearest][2] < 0.5:
             inplane += 1
-        center = 25
+            center=42
         if shift:
             local_c[i] -= (surface_c[nearest] - surface_c[center])
             nearest = center

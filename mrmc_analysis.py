@@ -174,7 +174,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.local_c[i][1][0] = -self.local_c[i][1][0]
             if self.local_c[i][2][0] > 0:
                 self.local_c[i][2][0] = -self.local_c[i][2][0]'''
-        self.load_atom()
+        self.load_atom(local=False)
         chi_sum = self.cal_spectrum(f_material, dw, dE, s0, ms, weight)
         self.cal_rdf()
 
@@ -197,7 +197,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.local_size = self.local_e.size'''
 
         if not self.surface == '':
-            self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, self.local_c, self.rpath, self.subs, shift=False)
+            self.item_s, self.item_c = plot_on_substrate(self.surface_c, self.surface_e, self.local_c, self.rpath, self.subs, shift=True)
 
         self.set_plot(chi_sum)
         self.setWindowTitle('mRMC (%s)' % self.folder)
@@ -342,6 +342,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return weight, s0, ms, f_material, surface_file, surface_range
 
     def load_rep(self):
+        if not self.surface == '':
+            self.surface_c, self.surface_e = load_substrate(self.folder, self.local_size)
         self.local_c, flag = read_rep(self.folder, self.choice_window(), self.local_size)
         if flag:
             self.statusbar.showMessage('No result file found', 3000)
@@ -349,17 +351,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
         self.rep = self.local_c.shape[0]
         self.current_rep = np.arange(self.rep)
-        # filter = tca_filter(self.surface_c, self.surface_e, self.local_c)
-        # self.local_c = self.local_c[filter, :, :]
+        filter = tca_filter(self.surface_c, self.surface_e, self.local_c.copy())
+        self.local_c = self.local_c[filter, :, :]
+        self.local_c = np.delete(self.local_c, 26, 0)
+        self.rep = self.local_c.shape[0]
+        self.current_rep = np.arange(self.rep)
         self.amountLine.setText('%d / %d' % (self.rep, len(os.listdir(self.folder + r'/result'))))
 
-    def load_atom(self):
+    def load_atom(self, local=False):
         if not self.surface == '':
-            self.surface_c, self.surface_e = load_substrate(self.folder, self.local_size)
             if self.surface == 'Al2O3':
                 plot_Al2O3(self.surface_c, self.surface_e, self.subs)
             elif self.surface == 'TiO2':
-                plot_TiO2(self.surface_c, self.surface_e, self.subs, local=False)
+                plot_TiO2(self.surface_c, self.surface_e, self.subs, local=local)
             self.select_c, self.select_d, self.select_e, self.adsorb = select_atom(
                 self.surface_c, self.surface_e, self.local_c, self.local_e, self.rpath)
             self.symbol = np.unique(np.append(self.local_e[1:], self.symbol))
